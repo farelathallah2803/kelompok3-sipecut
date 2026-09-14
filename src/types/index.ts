@@ -56,7 +56,7 @@ export type UserRole =
   | 'gubernur_bi'
   | 'pimpinan_satker';
 
-export type RegulationType = 'PBI' | 'PDG' | 'PADG' | 'PADG_INTERN' | 'JUKNIS';
+export type RegulationType = 'PBI' | 'PDG' | 'PADG' | 'PADG_INTERN' | 'JUKNIS' | 'SE' | 'UU' | string;
 
 export type JuknisTemplateType = 'templat_1' | 'templat_2' | 'templat_3';
 
@@ -71,13 +71,16 @@ export interface Article {
 
 export interface Regulation {
   id: string;
+  jdihId?: string;
   type: RegulationType;
   number: string;
   title: string;
   year: number;
-  sector: 'Sistem Pembayaran' | 'Moneter' | 'Makroprudensial' | 'Manajemen Risiko & Tata Kelola' | 'Audit' | 'Pembentukan Peraturan' | 'Umum';
-  status: 'Berlaku' | 'Diubah' | 'Dicabut';
+  sector: 'Sistem Pembayaran' | 'Sistem Pembayaran & PUR' | 'Moneter' | 'Makroprudensial' | 'Pendukung Kebijakan' | 'Pendukung Organisasi' | 'Manajemen Risiko & Tata Kelola' | 'Audit' | 'Pembentukan Peraturan' | 'Umum' | 'Lainnya' | string;
+  status: 'Berlaku' | 'Diubah' | 'Dicabut' | string;
+  date?: string;
   jdihUrl: string;
+  downloadPdfUrl?: string;
   summary: string;
   articles: Article[];
 }

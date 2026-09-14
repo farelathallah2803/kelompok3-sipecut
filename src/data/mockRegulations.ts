@@ -1,6 +1,7 @@
-﻿import { Regulation } from '@/types';
+import { Regulation } from '@/types';
+import rawJdihRegulations from './jdihRegulations.json';
 
-export const MOCK_REGULATIONS: Regulation[] = [
+export const CORE_DETAILED_REGULATIONS: Regulation[] = [
   {
     id: 'reg-padg-intern-66-2025',
     type: 'PADG_INTERN',
@@ -201,3 +202,17 @@ export const MOCK_REGULATIONS: Regulation[] = [
     ]
   }
 ];
+
+// Helper to normalize strings for deduplication
+const coreNumbers = new Set(CORE_DETAILED_REGULATIONS.map(r => r.number.toLowerCase().replace(/\s+/g, '')));
+
+// Cast and filter raw JDIH regulations
+const jdihRegulations: Regulation[] = (rawJdihRegulations as unknown as Regulation[]).filter(
+  r => !coreNumbers.has(r.number.toLowerCase().replace(/\s+/g, ''))
+);
+
+export const MOCK_REGULATIONS: Regulation[] = [
+  ...CORE_DETAILED_REGULATIONS,
+  ...jdihRegulations
+];
+

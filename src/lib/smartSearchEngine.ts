@@ -32,6 +32,8 @@ export interface SmartSearchResponse {
     padg: number;
     padgIntern: number;
     juknis: number;
+    se?: number;
+    uu?: number;
   };
   articles: SearchResultArticle[];
 }
@@ -116,9 +118,20 @@ export function searchAllRegulations(rawQuery: string): SmartSearchResponse {
   const queryWords = query.split(/\s+/).filter(w => w.length > 2);
   const matchedArticles: SearchResultArticle[] = [];
 
-  // 1. Scan Corpus Regulasi Payung (PBI, PADG, PADG Intern)
+  // 1. Scan Corpus Regulasi Payung (PBI, PADG, PADG Intern, SE, UU)
   for (const reg of MOCK_REGULATIONS) {
-    for (const art of reg.articles) {
+    const articlesToScan = (reg.articles && reg.articles.length > 0)
+      ? reg.articles
+      : [{
+          articleNumber: 'Pokok Pengaturan',
+          title: reg.title,
+          content: `${reg.number} tentang ${reg.title}. Sektor: ${reg.sector}. Tahun ${reg.year}. Status: ${reg.status}.`,
+          keyMandates: [reg.sector],
+          keyProhibitions: [],
+          thresholds: [`Tahun ${reg.year}`]
+        }];
+
+    for (const art of articlesToScan) {
       let score = 0;
       const reasons: string[] = [];
 
@@ -250,7 +263,9 @@ export function searchAllRegulations(rawQuery: string): SmartSearchResponse {
     pbi: matchedArticles.filter(a => a.regulationType === 'PBI').length,
     padg: matchedArticles.filter(a => a.regulationType === 'PADG').length,
     padgIntern: matchedArticles.filter(a => a.regulationType === 'PADG_INTERN').length,
-    juknis: matchedArticles.filter(a => a.regulationType === 'JUKNIS').length
+    juknis: matchedArticles.filter(a => a.regulationType === 'JUKNIS').length,
+    se: matchedArticles.filter(a => a.regulationType === 'SE').length,
+    uu: matchedArticles.filter(a => a.regulationType === 'UU').length
   };
 
   return {
@@ -259,7 +274,7 @@ export function searchAllRegulations(rawQuery: string): SmartSearchResponse {
     keyTakeaway: aiAnswer.takeaway,
     totalMatched: matchedArticles.length,
     hierarchyBreakdown: breakdown,
-    articles: matchedArticles
+    articles: matchedArticles.slice(0, 100)
   };
 }
 

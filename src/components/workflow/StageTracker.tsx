@@ -1,35 +1,24 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  CheckCircle2, 
-  Clock, 
-  AlertTriangle, 
-  XCircle, 
-  FileEdit, 
-  SearchCheck, 
-  PenTool, 
-  Scale,
+import {
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  FileEdit,
   ShieldAlert,
-  ChevronDown, 
-  ChevronUp, 
-  Layers,
-  ArrowRight,
-  Users,
+  ChevronDown,
+  ChevronUp,
   Building,
   Gavel,
   Landmark,
-  FileCheck,
   Send,
-  Stamp
 } from 'lucide-react';
-import { WorkflowStage, WorkflowStatus, ReviewNote, WorkflowRegulationType } from '@/types';
+import { WorkflowStage, WorkflowStatus, ReviewNote } from '@/types';
 
 interface StageTrackerProps {
-  workflowType?: WorkflowRegulationType;
   currentStage: WorkflowStage;
   status: WorkflowStatus;
-  officialNumber?: string;
   reviewNotes?: ReviewNote[];
 }
 
@@ -41,100 +30,6 @@ interface StepDetail {
   desc: string;
   icon: React.ReactNode;
 }
-
-const PBI_STEPS: StepDetail[] = [
-  {
-    key: 'pbi_legal_review',
-    code: '1',
-    title: 'Legal Review',
-    actor: 'Departemen Hukum (DHk)',
-    desc: 'Penelaahan aspek legal drafting dan keselarasan kewenangan BI',
-    icon: <Scale className="w-5 h-5" />
-  },
-  {
-    key: 'pbi_harmonisasi',
-    code: '2',
-    title: 'Harmonisasi Bersama',
-    actor: 'Kemenkum & Kemenkeu',
-    desc: 'Harmonisasi eksternal bersama Kemenkumham dan Kementerian Keuangan',
-    icon: <Building className="w-5 h-5" />
-  },
-  {
-    key: 'pbi_legal_closing',
-    code: '3',
-    title: 'Legal Closing',
-    actor: 'Departemen Hukum (DHk)',
-    desc: 'Penyelarasan hasil harmonisasi dan penutupan pembahasan aspek hukum',
-    icon: <FileCheck className="w-5 h-5" />
-  },
-  {
-    key: 'pbi_finalisasi',
-    code: '4',
-    title: 'Clean / Finalisasi',
-    actor: 'Tim Perumus & DHk',
-    desc: 'Finalisasi naskah otentik dan pengecekan tata naskah akhir',
-    icon: <FileEdit className="w-5 h-5" />
-  },
-  {
-    key: 'pbi_ttd_gub',
-    code: '5',
-    title: 'TTD Gubernur BI',
-    actor: 'Gubernur Bank Indonesia',
-    desc: 'Penetapan dan penandatanganan resmi naskah PBI oleh Gubernur',
-    icon: <Stamp className="w-5 h-5" />
-  },
-  {
-    key: 'pbi_publish',
-    code: '6',
-    title: 'DHk Publish',
-    actor: 'Departemen Hukum (DHk)',
-    desc: 'Pengundangan dan publikasi resmi di JDIH Bank Indonesia',
-    icon: <Send className="w-5 h-5" />
-  }
-];
-
-const PADG_STEPS: StepDetail[] = [
-  {
-    key: 'padg_legal_review',
-    code: '1',
-    title: 'Legal Review',
-    actor: 'Departemen Hukum (DHk)',
-    desc: 'Penelaahan substansi hukum operasional dan hierarki PADG',
-    icon: <Scale className="w-5 h-5" />
-  },
-  {
-    key: 'padg_legal_closing',
-    code: '2',
-    title: 'Legal Closing',
-    actor: 'Departemen Hukum (DHk)',
-    desc: 'Penutupan aspek hukum dan legal clearance naskah PADG',
-    icon: <FileCheck className="w-5 h-5" />
-  },
-  {
-    key: 'padg_finalisasi',
-    code: '3',
-    title: 'Clean / Finalisasi',
-    actor: 'Tim Perumus & DHk',
-    desc: 'Pembersihan draf naskah final tanpa catatan revisi',
-    icon: <FileEdit className="w-5 h-5" />
-  },
-  {
-    key: 'padg_ttd_gub',
-    code: '4',
-    title: 'TTD Gubernur / Penetapan',
-    actor: 'Gubernur / Dewan Gubernur',
-    desc: 'Penandatanganan penetapan PADG oleh Gubernur Bank Indonesia',
-    icon: <Stamp className="w-5 h-5" />
-  },
-  {
-    key: 'padg_publish',
-    code: '5',
-    title: 'DHk Publish',
-    actor: 'Departemen Hukum (DHk)',
-    desc: 'Penerbitan dan pengarsipan resmi pada repositori JDIH BI',
-    icon: <Send className="w-5 h-5" />
-  }
-];
 
 const JUKNIS_STEPS: StepDetail[] = [
   {
@@ -187,115 +82,16 @@ const JUKNIS_STEPS: StepDetail[] = [
   }
 ];
 
-const LEGACY_STEPS: StepDetail[] = [
-  {
-    key: 'unit_kerja',
-    code: '1',
-    title: 'Unit Kerja Pemrakarsa',
-    actor: 'Drafter Unit Kerja',
-    desc: 'Inisiasi & penyusunan draft juknis',
-    icon: <FileEdit className="w-5 h-5" />
-  },
-  {
-    key: 'satuan_kerja',
-    code: '2',
-    title: 'Satuan Kerja Pemrakarsa',
-    actor: 'Pimpinan Satker',
-    desc: 'Persetujuan pimpinan satuan kerja',
-    icon: <Users className="w-5 h-5" />
-  },
-  {
-    key: 'dmr',
-    code: '3',
-    title: 'Manajemen Risiko (DMR)',
-    actor: 'Reviewer DMR',
-    desc: 'Analisis profil risiko & mitigasi',
-    icon: <ShieldAlert className="w-5 h-5" />
-  },
-  {
-    key: 'dai',
-    code: '4',
-    title: 'Audit Intern (DAI)',
-    actor: 'Auditor DAI',
-    desc: 'Evaluasi pengendalian intern',
-    icon: <SearchCheck className="w-5 h-5" />
-  },
-  {
-    key: 'dhuk',
-    code: '5',
-    title: 'Departemen Hukum (DHUK)',
-    actor: 'Legal DHUK',
-    desc: 'Harmonisasi hierarki regulasi',
-    icon: <Scale className="w-5 h-5" />
-  },
-  {
-    key: 'ditetapkan',
-    code: '6',
-    title: 'Ditetapkan & Berlaku',
-    actor: 'Pemimpin Pemrakarsa',
-    desc: 'Pengesahan tanda tangan naskah resmi',
-    icon: <PenTool className="w-5 h-5" />
-  }
-];
-
-export default function StageTracker({ 
-  workflowType,
-  currentStage, 
-  status, 
-  officialNumber,
-  reviewNotes = [] 
+export default function StageTracker({
+  currentStage,
+  status,
+  reviewNotes = []
 }: StageTrackerProps) {
   const [showNotes, setShowNotes] = useState(false);
 
-  // Determine active workflow
-  const detectedType: WorkflowRegulationType = (() => {
-    if (workflowType) return workflowType;
-    if (typeof currentStage === 'string' && currentStage.startsWith('pbi_')) return 'pbi';
-    if (typeof currentStage === 'string' && currentStage.startsWith('padg_')) return 'padg';
-    if (typeof currentStage === 'string' && currentStage.startsWith('juknis_')) return 'juknis';
-    return 'juknis';
-  })();
-
-  const steps = (() => {
-    if (detectedType === 'pbi') return PBI_STEPS;
-    if (detectedType === 'padg') return PADG_STEPS;
-    if (typeof currentStage === 'string' && (
-      currentStage === 'unit_kerja' || 
-      currentStage === 'satuan_kerja' || 
-      currentStage === 'dmr' || 
-      currentStage === 'dai' || 
-      currentStage === 'dhuk' || 
-      currentStage === 'ditetapkan'
-    )) {
-      return LEGACY_STEPS;
-    }
-    return JUKNIS_STEPS;
-  })();
-
+  const steps = JUKNIS_STEPS;
   const currentIndex = steps.findIndex(s => s.key === currentStage);
-
-  const getWorkflowBadge = () => {
-    switch (detectedType) {
-      case 'pbi':
-        return {
-          label: 'Peraturan Bank Indonesia (PBI)',
-          color: 'bg-emerald-50 text-emerald-700 border-emerald-200'
-        };
-      case 'padg':
-        return {
-          label: 'Peraturan Anggota Dewan Gubernur (PADG)',
-          color: 'bg-indigo-50 text-indigo-700 border-indigo-200'
-        };
-      case 'juknis':
-      default:
-        return {
-          label: 'Petunjuk Teknis (Juknis)',
-          color: 'bg-blue-50 text-blue-700 border-blue-200'
-        };
-    }
-  };
-
-  const wfInfo = getWorkflowBadge();
+  const wfInfo = { label: 'Petunjuk Teknis (Juknis)', color: 'bg-blue-50 text-blue-700 border-blue-200' };
 
   return (
     <div className="bg-white rounded-xl shadow-2xs border border-slate-200/80 p-5 space-y-4">

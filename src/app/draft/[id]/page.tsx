@@ -19,7 +19,8 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { PetunjukTeknisDraft, UserRole } from '@/types';
-import { getDraftById, getActiveRole, getStageLabel, saveDraft, canRoleActOnStage, getWorkflowType } from '@/lib/storage';
+import { getActiveRole, getStageLabel, canRoleActOnStage } from '@/lib/storage';
+import { getDraft } from '@/lib/draftsApi';
 import { ROLE_DEFINITIONS } from '@/components/layout/Navbar';
 import StageTracker from '@/components/workflow/StageTracker';
 import HarmonizationChecker from '@/components/compliance/HarmonizationChecker';
@@ -37,19 +38,16 @@ export default function DraftDetailPage() {
 
   const loadDraft = () => {
     if (!draftId) return;
-    const found = getDraftById(draftId);
-    if (found) {
-      setDraft({ ...found });
-    }
+    getDraft(draftId)
+      .then(setDraft)
+      .catch(() => setDraft(null));
     setActiveRole(getActiveRole());
   };
 
   useEffect(() => {
     loadDraft();
-    window.addEventListener('juknis_storage_updated', loadDraft);
     window.addEventListener('juknis_role_changed', loadDraft);
     return () => {
-      window.removeEventListener('juknis_storage_updated', loadDraft);
       window.removeEventListener('juknis_role_changed', loadDraft);
     };
   }, [draftId]);
@@ -74,8 +72,8 @@ export default function DraftDetailPage() {
   }
 
   const canReviewCurrentStage = () => {
-    if (draft.status === 'approved' || draft.currentStage === 'pbi_publish' || draft.currentStage === 'padg_publish' || draft.currentStage === 'juknis_publikasi_dhk' || draft.currentStage === 'ditetapkan') return false;
-    return canRoleActOnStage(draft.currentStage, activeRole, draft.workflowType || getWorkflowType(draft));
+    if (draft.status === 'approved' || draft.currentStage === 'juknis_publikasi_dhk') return false;
+    return canRoleActOnStage(draft.currentStage, activeRole);
   };
 
   const isMatchingRole = canReviewCurrentStage();
@@ -211,7 +209,6 @@ export default function DraftDetailPage() {
 
       {/* Progress Tracking Stepper */}
       <StageTracker
-        workflowType={draft.workflowType || getWorkflowType(draft)}
         currentStage={draft.currentStage}
         status={draft.status}
         reviewNotes={draft.reviewNotes}
@@ -346,9 +343,7 @@ export default function DraftDetailPage() {
           <HarmonizationChecker
             draft={draft}
             onAnalysisUpdated={(newSummary) => {
-              const updated = { ...draft, complianceSummary: newSummary };
-              saveDraft(updated);
-              setDraft(updated);
+              setDraft({ ...draft, complianceSummary: newSummary });
             }}
           />
         </div>
@@ -441,6 +436,29 @@ export default function DraftDetailPage() {
                         </div>
                         <div>Status Hierarki Norma: <strong>{rev.legalAssessment.hierarchyStatus}</strong></div>
                         <div>Legal Opinion: {rev.legalAssessment.legalOpinion}</div>
+                      </div>
+                    )}
+
+                    {rev.dmstAssessment && (
+                      <div className="bg-cyan-50/70 p-3 rounded-lg border border-cyan-200 text-xs text-cyan-950 space-y-1">
+                        <div className="font-bold text-cyan-900">Hasil Evaluasi Tata Kelola DMST:</div>
+                        <div>Rating: <strong>{rev.dmstAssessment.strategicAlignmentRating}</strong> | Skor: <strong>{rev.dmstAssessment.governanceScore}/100</strong></div>
+                        <div>Rekomendasi: {rev.dmstAssessment.recommendations}</div>
+                      </div>
+                    )}
+
+                    {rev.rdgAssessment && (
+                      <div className="bg-purple-50/70 p-3 rounded-lg border border-purple-200 text-xs text-purple-950 space-y-1">
+                        <div className="font-bold text-purple-900">Risalah Keputusan Rapat Dewan Gubernur (RDG):</div>
+                        <div>Nomor Risalah: <strong>{rev.rdgAssessment.resolutionNumber}</strong> ({rev.rdgAssessment.meetingDate})</div>
+                        <div>Keputusan: {rev.rdgAssessment.decisions}</div>
+                      </div>
+                    )}
+
+                    {rev.adgApproval && (
+                      <div className="bg-violet-50/70 p-3 rounded-lg border border-violet-200 text-xs text-violet-950 space-y-1">
+                        <div className="font-bold text-violet-900">Lembar Persetujuan ADG Pembina:</div>
+                        <div>Pejabat: <strong>{rev.adgApproval.adgName}</strong> ({rev.adgApproval.portfolioSector}) — {rev.adgApproval.approvalStatus}</div>
                       </div>
                     )}
                   </div>

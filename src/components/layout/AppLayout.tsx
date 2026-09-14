@@ -1,18 +1,42 @@
 ﻿'use client';
 
 import React, { useState, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import { PanelLeft } from 'lucide-react';
+import { isLoggedIn } from '@/lib/auth';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // Auth state depends on localStorage, which the server can't see — gate on
+  // `mounted` so the very first client render still matches the server's
+  // markup, avoiding a hydration mismatch, then reconcile after mount.
+  const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
+  const isLoginPage = pathname === '/login';
 
   useEffect(() => {
+    setMounted(true);
     const saved = localStorage.getItem('juknis_sidebar_visible');
     if (saved !== null) {
       setIsSidebarOpen(saved === 'true');
     }
   }, []);
+
+  useEffect(() => {
+    if (mounted && !isLoginPage && !isLoggedIn()) {
+      router.replace('/login');
+    }
+  }, [mounted, isLoginPage, pathname, router]);
+
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
+
+  if (!mounted || !isLoggedIn()) {
+    return null;
+  }
 
   const toggleSidebar = () => {
     setIsSidebarOpen(prev => {

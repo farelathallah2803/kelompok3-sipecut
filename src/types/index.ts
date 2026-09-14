@@ -58,6 +58,13 @@ export type UserRole =
 
 export type RegulationType = 'PBI' | 'PDG' | 'PADG' | 'PADG_INTERN' | 'JUKNIS' | 'SE' | 'UU' | string;
 
+/** A user's role within one project (backend Hierarchy) — AWS-IAM-style, per-project. */
+export interface Membership {
+  hierarchyId: string;
+  hierarchyName: string;
+  role: UserRole;
+}
+
 export type JuknisTemplateType = 'templat_1' | 'templat_2' | 'templat_3';
 
 export interface Article {
@@ -193,6 +200,11 @@ export interface HarmonizationIssue {
   matchedText: string;
   explanation: string;
   recommendation: string;
+  // Present only for results from the real backend pipeline (mode: 'real' below).
+  rank?: number;
+  similarity?: number;
+  relationGroup?: 'SELARAS' | 'BERTENTANGAN' | 'TIDAK TERKAIT';
+  correctedGroup?: 'SELARAS' | 'BERTENTANGAN' | 'TIDAK TERKAIT';
 }
 
 export interface HarmonizationSummary {
@@ -203,6 +215,10 @@ export interface HarmonizationSummary {
   compatibilityScore: number;
   isSafeToProceed: boolean;
   issues: HarmonizationIssue[];
+  // 'real' = backend AI pipeline (mode EVALUASI); 'mock' = offline keyword engine.
+  mode?: 'real' | 'mock';
+  sessionId?: string;
+  alignedCount?: number;
 }
 
 export interface JuknisTypography {
@@ -236,6 +252,7 @@ export interface UploadedDraftFile {
 export interface PetunjukTeknisDraft {
   id: string;
   code: string; // e.g. NOMOR 1/JUKNIS/INTERNAL/DKSP/2025
+  hierarchyId?: string; // project (backend Hierarchy) this draft's Uji Harmonisasi runs against
   title: string;
   workflowType?: WorkflowRegulationType; // 'pbi' | 'padg' | 'juknis'
   templateType?: JuknisTemplateType; // templat_1, templat_2, templat_3

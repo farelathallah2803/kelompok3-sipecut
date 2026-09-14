@@ -17,8 +17,9 @@ import {
   Sparkles,
   Search
 } from 'lucide-react';
-import { PetunjukTeknisDraft, WorkflowRegulationType, UploadedDraftFile } from '@/types';
-import { saveDraft, getActiveRole } from '@/lib/storage';
+import { WorkflowRegulationType, UploadedDraftFile } from '@/types';
+import { getActiveProject } from '@/lib/auth';
+import { createDraft } from '@/lib/draftsApi';
 import { MOCK_REGULATIONS } from '@/data/mockRegulations';
 
 export default function UploadDraftForm() {
@@ -51,12 +52,8 @@ export default function UploadDraftForm() {
   );
   
   // File state
-  const [uploadedFile, setUploadedFile] = useState<UploadedDraftFile | null>({
-    name: 'Rancangan_Regulasi_Draft_Final.pdf',
-    size: 2458200,
-    type: 'application/pdf',
-    uploadedAt: new Date().toISOString()
-  });
+  const [uploadedFile, setUploadedFile] = useState<UploadedDraftFile | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -87,6 +84,7 @@ export default function UploadDraftForm() {
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
+      setSelectedFile(file);
       setUploadedFile({
         name: file.name,
         size: file.size,
@@ -103,6 +101,7 @@ export default function UploadDraftForm() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      setSelectedFile(file);
       setUploadedFile({
         name: file.name,
         size: file.size,
@@ -123,106 +122,76 @@ export default function UploadDraftForm() {
       setRubrikSatker(match[1]);
     }
   };
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       setErrorMsg('Judul naskah petunjuk teknis wajib diisi.');
       return;
     }
-    if (!uploadedFile) {
-      setErrorMsg('Silakan unggah berkas naskah rancangan (PDF/DOCX).');
+    if (!selectedFile) {
+      setErrorMsg('Silakan unggah berkas naskah rancangan (PDF).');
       return;
     }
     if (selectedRegulations.length === 0) {
       setErrorMsg('Mohon pilih minimal satu dasar hukum / aturan acuan.');
       return;
     }
+    const project = getActiveProject();
+    if (!project) {
+      setErrorMsg('Belum ada project aktif.');
+      return;
+    }
 
     setIsSubmitting(true);
-    const newId = `draft-${Date.now().toString().slice(-4)}`;
+    setErrorMsg('');
     const currentYear = new Date().getFullYear();
+    const computedCode = `NOMOR ${Math.floor(Math.random() * 900 + 100)}/JUKNIS/${scope}/${rubrikSatker}/${currentYear}`;
 
-    const computedCode = `NOMOR ${Math.floor(Math.random() * 10) + 1}/JUKNIS/${scope}/${rubrikSatker}/${currentYear}`;
-    const startStage = 'juknis_penyusunan';
-
-    const newDraft: PetunjukTeknisDraft = {
-      id: newId,
-      code: computedCode,
-      title: title.trim(),
-      workflowType: 'juknis',
-      templateType: 'templat_1',
-      isConfidential,
-      scope,
-      rubrikSatker,
-      year: currentYear,
-      category,
-      unitKerja,
-      proposerName,
-      currentStage: startStage,
-      status: 'in_review',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      uploadedFile,
-      generalProvisions: {
-        background: background.trim() || `Rancangan petunjuk teknis diajukan oleh ${unitKerja} untuk penetapan dan evaluasi operasional Bank Indonesia.`,
-        legalBases: selectedRegulations,
-        purpose: `Menetapkan pedoman dan ketentuan pelaksanaan kebijakan sektor ${category}.`,
-        definitions: [],
-        scope: `Ruang lingkup ketentuan berlaku bagi entitas terkait di lingkungan Bank Indonesia dan industri mitra.`
-      },
-      chapters: [
+    try {
+      const draft = await createDraft(
         {
-          id: 'chap-1',
-          chapterNumber: 'BAB I',
-          title: 'KETENTUAN OPERASIONAL & KEPATUHAN',
-          articles: [
+          hierarchyId: project.hierarchyId,
+          code: computedCode,
+          title: title.trim(),
+          templateType: 'templat_1',
+          isConfidential,
+          scope,
+          rubrikSatker,
+          year: currentYear,
+          category,
+          unitKerja,
+          foreword: background.trim(),
+          generalProvisions: {
+            background: background.trim() || `Rancangan petunjuk teknis diajukan oleh ${unitKerja} untuk penetapan dan evaluasi operasional Bank Indonesia.`,
+            legalBases: selectedRegulations,
+            purpose: `Menetapkan pedoman dan ketentuan pelaksanaan kebijakan sektor ${category}.`,
+            definitions: [],
+            scope: `Ruang lingkup ketentuan berlaku bagi entitas terkait di lingkungan Bank Indonesia dan industri mitra.`,
+          },
+          chapters: [
             {
-              id: 'art-1',
-              articleNumber: 'Pasal 1',
-              title: 'Ketentuan Umum Pelaksanaan',
-              content: 'Penyelenggara wajib mematuhi seluruh standar teknis dan batas waktu yang ditetapkan oleh Bank Indonesia.',
-              explanation: 'Ketentuan materiil dari berkas naskah yang diunggah.'
-            }
-          ]
-        }
-      ],
-      attachments: [],
-      reviewNotes: [
-        {
-          id: `rev-${Date.now()}`,
-          stage: startStage,
-          reviewerRole: 'drafter',
-          reviewerName: proposerName,
-          department: unitKerja,
-          decision: 'approve',
-          notes: `Berkas naskah '${uploadedFile.name}' berhasil diunggah dan diajukan ke tahapan penelaahan resmi.`,
-          createdAt: new Date().toISOString()
-        }
-      ],
-      history: [
-        {
-          id: `log-${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          actor: proposerName,
-          role: 'Drafter Unit Kerja',
-          action: 'Pengajuan Berkas Naskah',
-          stage: startStage,
-          details: `Mengunggah berkas ${uploadedFile.name} (${(uploadedFile.size / 1024 / 1024).toFixed(2)} MB)`
-        }
-      ],
-      complianceSummary: {
-        totalIssues: 0,
-        conflictCount: 0,
-        duplicateCount: 0,
-        hierarchyViolations: 0,
-        compatibilityScore: 100,
-        isSafeToProceed: true,
-        issues: []
-      }
-    };
-
-    saveDraft(newDraft);
-    router.push(`/draft/${newId}`);
+              id: 'chap-1',
+              chapterNumber: 'BAB I',
+              title: 'KETENTUAN OPERASIONAL & KEPATUHAN',
+              articles: [
+                {
+                  id: 'art-1',
+                  articleNumber: 'Pasal 1',
+                  title: 'Ketentuan Umum Pelaksanaan',
+                  content: 'Penyelenggara wajib mematuhi seluruh standar teknis dan batas waktu yang ditetapkan oleh Bank Indonesia.',
+                  explanation: 'Ketentuan materiil dari berkas naskah yang diunggah.',
+                },
+              ],
+            },
+          ],
+        },
+        selectedFile
+      );
+      router.push(`/draft/${draft.id}`);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Gagal mengirim draft.');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -294,7 +263,7 @@ export default function UploadDraftForm() {
             <input 
               ref={fileInputRef}
               type="file" 
-              accept=".pdf,.docx,.doc,.rtf" 
+              accept=".pdf"
               onChange={handleFileSelect}
               className="hidden" 
             />
@@ -304,7 +273,7 @@ export default function UploadDraftForm() {
               Klik untuk memilih berkas atau seret &amp; lepas berkas naskah di sini
             </div>
             <p className="text-[11px] text-slate-400 mt-1">
-              Format yang didukung: <strong>PDF, DOCX, DOC</strong> (Maksimal 25 MB)
+              Format yang didukung: <strong>PDF</strong> (diproses otomatis dengan OCR/AI)
             </p>
           </div>
 
@@ -324,7 +293,7 @@ export default function UploadDraftForm() {
 
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); setUploadedFile(null); }}
+                onClick={(e) => { e.stopPropagation(); setUploadedFile(null); setSelectedFile(null); }}
                 className="p-1 text-slate-400 hover:text-rose-600 transition"
                 title="Hapus berkas"
               >

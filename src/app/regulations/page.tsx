@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { 
-  Search, 
-  ExternalLink, 
-  ChevronDown, 
+import React, { useState, useMemo, useEffect } from 'react';
+import {
+  Search,
+  ExternalLink,
+  ChevronDown,
   ChevronUp,
   Download,
   CheckCircle2,
@@ -14,9 +14,142 @@ import {
   TrendingUp,
   Building2,
   Filter,
-  FileText
+  FileText,
+  UploadCloud,
+  RefreshCw,
+  Clock,
+  Loader2,
+  XCircle,
 } from 'lucide-react';
 import { MOCK_REGULATIONS } from '@/data/mockRegulations';
+import { Membership } from '@/types';
+import { getActiveProject } from '@/lib/auth';
+import { listDocuments, reprocessDocument, ProjectDocument } from '@/lib/documentsApi';
+import { usePollDocumentStatus } from '@/hooks/usePollDocumentStatus';
+import UploadDocumentModal from '@/components/documents/UploadDocumentModal';
+
+const STATUS_BADGE: Record<ProjectDocument['status'], { label: string; className: string; icon: React.ElementType }> = {
+  draft:             { label: 'Draft',              className: 'bg-slate-100 text-slate-600 border-slate-200',   icon: Clock },
+  pending:           { label: 'Menunggu',           className: 'bg-slate-100 text-slate-600 border-slate-200',   icon: Clock },
+  processing_l1:     { label: 'Ekstraksi Dokumen',  className: 'bg-blue-50 text-blue-700 border-blue-200',       icon: Loader2 },
+  processing_embed:  { label: 'Membuat Embedding',  className: 'bg-blue-50 text-blue-700 border-blue-200',       icon: Loader2 },
+  ready:             { label: 'Siap Digunakan',     className: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
+  error:             { label: 'Gagal Diproses',     className: 'bg-rose-50 text-rose-700 border-rose-200',       icon: XCircle },
+};
+
+function DocumentRow({ doc, onChange }: { doc: ProjectDocument; onChange: (d: ProjectDocument) => void }) {
+  usePollDocumentStatus(doc.id, doc.status, onChange);
+  const badge = STATUS_BADGE[doc.status];
+  const Icon = badge.icon;
+  const isSpinning = doc.status === 'processing_l1' || doc.status === 'processing_embed';
+
+  return (
+    <tr className="hover:bg-slate-50/60 transition">
+      <td className="py-2.5 px-3 text-xs font-semibold text-slate-800">{doc.title}</td>
+      <td className="py-2.5 px-3 text-xs text-slate-500">{doc.doc_type_display}</td>
+      <td className="py-2.5 px-3">
+        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-semibold border ${badge.className}`}>
+          <Icon className={`w-3 h-3 ${isSpinning ? 'animate-spin' : ''}`} />
+          {badge.label}
+        </span>
+      </td>
+      <td className="py-2.5 px-3 text-right">
+        {doc.status === 'error' && (
+          <button
+            onClick={async () => onChange(await reprocessDocument(doc.id))}
+            className="text-[11px] font-semibold text-blue-700 hover:text-blue-900 flex items-center gap-1 justify-end w-full"
+          >
+            <RefreshCw className="w-3 h-3" /> Proses Ulang
+          </button>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function ProjectDocumentsPanel() {
+  const [activeProject, setActiveProject] = useState<Membership | null>(null);
+  const [documents, setDocuments] = useState<ProjectDocument[]>([]);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadDocs = (hierarchyId: string) => {
+    listDocuments(hierarchyId).then(setDocuments).catch((e) => setError(e.message));
+  };
+
+  useEffect(() => {
+    const project = getActiveProject();
+    setActiveProject(project);
+    if (project) loadDocs(project.hierarchyId);
+
+    const handleProjectChange = () => {
+      const p = getActiveProject();
+      setActiveProject(p);
+      if (p) loadDocs(p.hierarchyId);
+      else setDocuments([]);
+    };
+    window.addEventListener('projectSelected', handleProjectChange);
+    return () => window.removeEventListener('projectSelected', handleProjectChange);
+  }, []);
+
+  const handleDocChange = (updated: ProjectDocument) => {
+    setDocuments((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+  };
+
+  if (!activeProject) return null;
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-2xs p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-bold text-slate-900">Dokumen Internal Project</h2>
+          <p className="text-[11px] text-slate-500">
+            Dokumen kerja project <strong>{activeProject.hierarchyName}</strong> — diproses otomatis dengan OCR/AI setelah diunggah.
+          </p>
+        </div>
+        <button
+          onClick={() => setIsUploadOpen(true)}
+          className="flex items-center space-x-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
+        >
+          <UploadCloud className="w-3.5 h-3.5" />
+          <span>Unggah Dokumen</span>
+        </button>
+      </div>
+
+      {error && <p className="text-xs text-rose-600">{error}</p>}
+
+      {documents.length === 0 ? (
+        <div className="text-center py-8 text-xs text-slate-400">Belum ada dokumen di project ini.</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-slate-200 text-[11px] text-slate-400 uppercase tracking-wide">
+                <th className="py-2 px-3 font-semibold">Nama Dokumen</th>
+                <th className="py-2 px-3 font-semibold">Tipe</th>
+                <th className="py-2 px-3 font-semibold">Status</th>
+                <th className="py-2 px-3"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {documents.map((doc) => (
+                <DocumentRow key={doc.id} doc={doc} onChange={handleDocChange} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {isUploadOpen && (
+        <UploadDocumentModal
+          hierarchyId={activeProject.hierarchyId}
+          onClose={() => setIsUploadOpen(false)}
+          onUploaded={(doc) => setDocuments((prev) => [doc, ...prev])}
+        />
+      )}
+    </div>
+  );
+}
 
 export default function RegulationsCatalogPage() {
   const [search, setSearch] = useState('');
@@ -89,6 +222,9 @@ export default function RegulationsCatalogPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-5 pb-12">
+      {/* Project's own working documents — separate from the official JDIH catalog below */}
+      <ProjectDocumentsPanel />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
         <div>

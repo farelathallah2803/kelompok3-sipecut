@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useMemo } from 'react';
 import { 
@@ -103,18 +103,6 @@ export default function RegulationsCatalogPage() {
           <p className="text-xs text-slate-500 mt-0.5">
             Katalog terintegrasi basis data JDIH BI mencakup sektor Moneter, Sistem Pembayaran, Makroprudensial, dan Ketentuan Tata Kelola Intern.
           </p>
-        </div>
-
-        <div className="flex items-center space-x-2 shrink-0">
-          <a
-            href="https://jdih.bi.go.id/Web/DaftarPeraturan"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center space-x-1.5 text-xs text-blue-600 hover:text-blue-800 font-semibold px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition shadow-2xs"
-          >
-            <span>Portal JDIH BI</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
         </div>
       </div>
 
@@ -426,15 +414,9 @@ export default function RegulationsCatalogPage() {
                             <span>Unduh Naskah PDF</span>
                           </a>
                         )}
-                        <a
-                          href={reg.jdihUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 font-semibold flex items-center space-x-1 px-2.5 py-1 rounded bg-blue-50 border border-blue-200 hover:bg-blue-100 transition shadow-2xs"
-                        >
-                          <span>Buka Detail di JDIH BI</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
+                        <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
+                          {reg.sector} &bull; {reg.status}
+                        </span>
                       </div>
                     </div>
 
@@ -481,7 +463,7 @@ export default function RegulationsCatalogPage() {
                           <strong>Sektor Taksonomi:</strong> {reg.sector} &bull; <strong>Tahun Terbit:</strong> {reg.year} &bull; <strong>Status Keterlakuan:</strong> {reg.status}
                         </p>
                         <p className="text-slate-500 text-[11px]">
-                          Ketentuan ini terhubung langsung ke basis data legal repositori JDIH Bank Indonesia. Klik tombol di atas untuk melihat rincian pasal, abstrak, atau mengunduh dokumen resmi PDF.
+                          Ketentuan ini tersimpan dalam basis data repositori regulasi Bank Indonesia untuk acuan kepatuhan dan harmonisasi penyusunan petunjuk teknis.
                         </p>
                       </div>
                     )}

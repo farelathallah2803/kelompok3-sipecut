@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -276,7 +276,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
         <div className="relative">
           <div className="flex items-center justify-between mb-1.5 px-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Peran Aktif
+              Akun
             </span>
             <button
               onClick={handleResetData}
@@ -299,9 +299,6 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
               <div className="min-w-0">
                 <div className="text-xs font-bold text-slate-900 truncate">
                   {ROLE_DEFINITIONS[role]?.label || 'Satker Pemrakarsa'}
-                </div>
-                <div className="text-[10px] text-slate-500 truncate">
-                  Klik untuk simulasi peran
                 </div>
               </div>
             </div>

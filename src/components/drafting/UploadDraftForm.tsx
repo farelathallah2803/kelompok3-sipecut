@@ -123,45 +123,102 @@ export default function UploadDraftForm() {
     setSelectedRegulations(selectedRegulations.filter(r => r !== regNumber));
   };
 
-  // AI Bedah Dokumen Handler
+  // AI Bedah Dokumen Handler with Chunked Upload (Kapasitas s.d. 200 MB)
   const triggerAiDissection = async (file: File) => {
     setIsAnalyzing(true);
-    setAnalysisStatus('Membaca berkas dokumen...');
+    setAnalysisStatus('Mempersiapkan analisis dokumen...');
     setErrorMsg('');
 
     try {
-      setAnalysisStatus('Mengunggah berkas naskah...');
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('fileName', file.name);
-      formData.append('mimeType', file.type || 'application/pdf');
-
-      setAnalysisStatus('Gemini AI sedang membaca, menelaah & membedah pasal, bab, serta definisi...');
-
-      const response = await fetch('/api/parse-draft', {
-        method: 'POST',
-        body: formData
-      });
-
-      const rawText = await response.text();
       let result: any;
-      try {
-        const cleanText = (rawText || '').trim().replace(/^\uFEFF/, '');
-        result = JSON.parse(cleanText);
-      } catch (parseErr) {
-        if (response.status === 413) {
-          throw new Error('Ukuran berkas melebihi batas muatan server (Payload Too Large). Gunakan berkas naskah yang lebih kecil.');
-        } else if (response.status === 504 || response.status === 502) {
-          throw new Error('Koneksi server waktu habis (Gateway Timeout) saat membedah dokumen dengan AI. Silakan coba kembali.');
-        } else {
-          const cleanErr = (rawText || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 150);
-          throw new Error(`Gagal memproses respons server (HTTP ${response.status}): ${cleanErr || 'Respons server kosong atau bukan JSON yang valid.'}`);
+      const CHUNK_SIZE = 3 * 1024 * 1024; // 3 MB per chunk - aman dari batas 4.5MB Vercel / Nginx
+
+      if (file.size > CHUNK_SIZE) {
+        // Chunked upload untuk berkas besar
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        const uploadId = `upl_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+        for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+          const start = chunkIdx * CHUNK_SIZE;
+          const end = Math.min(file.size, start + CHUNK_SIZE);
+          const chunkBlob = file.slice(start, end);
+
+          const progressPercent = Math.round(((chunkIdx + 1) / totalChunks) * 100);
+          setAnalysisStatus(
+            chunkIdx === totalChunks - 1
+              ? 'Seluruh potongan naskah terunggah! Gemini AI sedang membaca & membedah dokumen...'
+              : `Mengunggah berkas (${progressPercent}% selesai - bagian ${chunkIdx + 1} dari ${totalChunks})...`
+          );
+
+          const chunkFormData = new FormData();
+          chunkFormData.append('file', chunkBlob, file.name);
+          chunkFormData.append('isChunk', 'true');
+          chunkFormData.append('uploadId', uploadId);
+          chunkFormData.append('chunkIndex', chunkIdx.toString());
+          chunkFormData.append('totalChunks', totalChunks.toString());
+          chunkFormData.append('fileName', file.name);
+          chunkFormData.append('mimeType', file.type || 'application/pdf');
+
+          const response = await fetch('/api/parse-draft', {
+            method: 'POST',
+            body: chunkFormData
+          });
+
+          const rawText = await response.text();
+          let chunkRes: any;
+          try {
+            const cleanText = (rawText || '').trim().replace(/^\uFEFF/, '');
+            chunkRes = JSON.parse(cleanText);
+          } catch {
+            const cleanErr = (rawText || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 150);
+            throw new Error(`Gagal memproses bagian ${chunkIdx + 1}/${totalChunks} (HTTP ${response.status}): ${cleanErr || 'Respons bukan JSON valid.'}`);
+          }
+
+          if (!response.ok || !chunkRes.success) {
+            throw new Error(chunkRes.error || `Gagal mengunggah bagian ${chunkIdx + 1} dari ${totalChunks}.`);
+          }
+
+          if (chunkIdx === totalChunks - 1) {
+            result = chunkRes;
+          }
+        }
+      } else {
+        // Direct single upload untuk berkas <= 3 MB
+        setAnalysisStatus('Mengunggah berkas naskah...');
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('fileName', file.name);
+        formData.append('mimeType', file.type || 'application/pdf');
+
+        setAnalysisStatus('Gemini AI sedang membaca, menelaah & membedah pasal, bab, serta definisi...');
+
+        const response = await fetch('/api/parse-draft', {
+          method: 'POST',
+          body: formData
+        });
+
+        const rawText = await response.text();
+        try {
+          const cleanText = (rawText || '').trim().replace(/^\uFEFF/, '');
+          result = JSON.parse(cleanText);
+        } catch {
+          if (response.status === 413) {
+            throw new Error('Ukuran berkas melebihi batas muatan server (Payload Too Large).');
+          } else if (response.status === 504 || response.status === 502) {
+            throw new Error('Koneksi server waktu habis (Gateway Timeout) saat membedah dokumen dengan AI. Silakan coba kembali.');
+          } else {
+            const cleanErr = (rawText || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 150);
+            throw new Error(`Gagal memproses respons server (HTTP ${response.status}): ${cleanErr || 'Respons server kosong atau bukan JSON yang valid.'}`);
+          }
+        }
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Gagal membedah dokumen dengan AI.');
         }
       }
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Gagal membedah dokumen dengan AI.');
+      if (!result?.data) {
+        throw new Error('Hasil bedah dokumen AI tidak ditemukan.');
       }
 
       const parsed = result.data;
@@ -633,7 +690,7 @@ export default function UploadDraftForm() {
               Klik untuk memilih berkas atau seret &amp; lepas berkas naskah di sini
             </div>
             <p className="text-[11px] text-slate-400 mt-1">
-              Mendukung: <strong>PDF, DOCX, TXT</strong> &bull; AI akan langsung membedah pasal dan ketentuan secara otomatis
+              Mendukung: <strong>PDF, DOCX, TXT</strong> (Kapasitas s.d. <strong>200 MB</strong> dengan auto-chunking) &bull; AI membedah pasal secara otomatis
             </p>
           </div>
 

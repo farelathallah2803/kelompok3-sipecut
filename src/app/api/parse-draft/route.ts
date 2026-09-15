@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { SATUAN_KERJA_LIST } from '@/data/satkerData';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -116,15 +119,65 @@ export async function POST(req: Request) {
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
-      const file = formData.get('file') as File | null;
-      if (file) {
-        fileName = file.name;
-        mimeType = file.type || 'application/pdf';
-        const arrayBuffer = await file.arrayBuffer();
-        fileBuffer = Buffer.from(arrayBuffer);
+      const isChunk = formData.get('isChunk') === 'true';
+
+      if (isChunk) {
+        const uploadId = ((formData.get('uploadId') as string) || `upl_${Date.now()}`).replace(/[^a-zA-Z0-9_-]/g, '');
+        const chunkIndex = parseInt((formData.get('chunkIndex') as string) || '0', 10);
+        const totalChunks = parseInt((formData.get('totalChunks') as string) || '1', 10);
+        fileName = (formData.get('fileName') as string) || fileName;
+        mimeType = (formData.get('mimeType') as string) || mimeType;
+        textContent = (formData.get('textContent') as string) || '';
+
+        const tempDir = path.join(os.tmpdir(), 'sipecut_chunks', uploadId);
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+
+        const chunkFile = formData.get('file') as File | null;
+        if (chunkFile) {
+          const chunkBuf = Buffer.from(await chunkFile.arrayBuffer());
+          fs.writeFileSync(path.join(tempDir, `chunk_${chunkIndex}.part`), chunkBuf);
+        }
+
+        // If not the last chunk, acknowledge receipt and wait for remaining chunks
+        if (chunkIndex < totalChunks - 1) {
+          return NextResponse.json({
+            success: true,
+            chunkReceived: chunkIndex,
+            totalChunks,
+            isComplete: false
+          });
+        }
+
+        // Final chunk received! Assemble all parts into full buffer
+        const assembled: Buffer[] = [];
+        for (let i = 0; i < totalChunks; i++) {
+          const partPath = path.join(tempDir, `chunk_${i}.part`);
+          if (!fs.existsSync(partPath)) {
+            throw new Error(`Bagian naskah ${i + 1} dari ${totalChunks} tidak ditemukan. Silakan ulangi unggah.`);
+          }
+          assembled.push(fs.readFileSync(partPath));
+        }
+        fileBuffer = Buffer.concat(assembled);
+
+        // Clean up temp directory
+        try {
+          fs.rmSync(tempDir, { recursive: true, force: true });
+        } catch (rmErr) {
+          console.warn('Gagal membersihkan direktori chunk sementara:', rmErr);
+        }
+      } else {
+        const file = formData.get('file') as File | null;
+        if (file) {
+          fileName = file.name;
+          mimeType = file.type || 'application/pdf';
+          const arrayBuffer = await file.arrayBuffer();
+          fileBuffer = Buffer.from(arrayBuffer);
+        }
+        fileName = (formData.get('fileName') as string) || fileName;
+        textContent = (formData.get('textContent') as string) || '';
       }
-      fileName = (formData.get('fileName') as string) || fileName;
-      textContent = (formData.get('textContent') as string) || '';
     } else {
       let body: any = {};
       try {

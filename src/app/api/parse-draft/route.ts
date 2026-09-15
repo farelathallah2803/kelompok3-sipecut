@@ -257,73 +257,79 @@ export async function POST(req: Request) {
       );
     }
 
+    const url = new URL(req.url);
+    const action = url.searchParams.get('action');
+
+    // 1. ACTION: Create Upload Session for direct-to-Google large file uploads (Kapasitas hingga 2 GB tanpa batas serverless Vercel)
+    if (action === 'create-upload-session') {
+      let reqBody: any = {};
+      try {
+        const text = await req.text();
+        if (text && text.trim()) {
+          reqBody = cleanAndParseJson(text);
+        }
+      } catch {
+        // Fallback
+      }
+
+      const fileName = reqBody.fileName || 'dokumen.pdf';
+      const fileSize = reqBody.fileSize || 0;
+      const mimeType = reqBody.mimeType || 'application/pdf';
+
+      const uploadEndpoint = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`;
+      const sessionRes = await fetch(uploadEndpoint, {
+        method: 'POST',
+        headers: {
+          'X-Goog-Upload-Protocol': 'resumable',
+          'X-Goog-Upload-Command': 'start',
+          'X-Goog-Upload-Header-Content-Length': fileSize.toString(),
+          'X-Goog-Upload-Header-Content-Type': mimeType,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ file: { display_name: fileName } })
+      });
+
+      if (!sessionRes.ok) {
+        const errText = await sessionRes.text();
+        return NextResponse.json(
+          { error: `Gagal membuat sesi unggah berkas ke Google Files (HTTP ${sessionRes.status}): ${errText.slice(0, 200)}` },
+          { status: sessionRes.status }
+        );
+      }
+
+      const uploadUrl = sessionRes.headers.get('x-goog-upload-url');
+      if (!uploadUrl) {
+        return NextResponse.json(
+          { error: 'Header x-goog-upload-url tidak diterima dari Google Files API.' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        uploadUrl
+      });
+    }
+
     const contentType = req.headers.get('content-type') || '';
     let fileBuffer: Buffer | null = null;
+    let fileUri = '';
     let fileName = 'document.pdf';
     let mimeType = 'application/pdf';
     let textContent = '';
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
-      const isChunk = formData.get('isChunk') === 'true';
-
-      if (isChunk) {
-        const uploadId = ((formData.get('uploadId') as string) || `upl_${Date.now()}`).replace(/[^a-zA-Z0-9_-]/g, '');
-        const chunkIndex = parseInt((formData.get('chunkIndex') as string) || '0', 10);
-        const totalChunks = parseInt((formData.get('totalChunks') as string) || '1', 10);
-        fileName = (formData.get('fileName') as string) || fileName;
-        mimeType = (formData.get('mimeType') as string) || mimeType;
-        textContent = (formData.get('textContent') as string) || '';
-
-        const tempDir = path.join(os.tmpdir(), 'sipecut_chunks', uploadId);
-        if (!fs.existsSync(tempDir)) {
-          fs.mkdirSync(tempDir, { recursive: true });
-        }
-
-        const chunkFile = formData.get('file') as File | null;
-        if (chunkFile) {
-          const chunkBuf = Buffer.from(await chunkFile.arrayBuffer());
-          fs.writeFileSync(path.join(tempDir, `chunk_${chunkIndex}.part`), chunkBuf);
-        }
-
-        // If not the last chunk, acknowledge receipt and wait for remaining chunks
-        if (chunkIndex < totalChunks - 1) {
-          return NextResponse.json({
-            success: true,
-            chunkReceived: chunkIndex,
-            totalChunks,
-            isComplete: false
-          });
-        }
-
-        // Final chunk received! Assemble all parts into full buffer
-        const assembled: Buffer[] = [];
-        for (let i = 0; i < totalChunks; i++) {
-          const partPath = path.join(tempDir, `chunk_${i}.part`);
-          if (!fs.existsSync(partPath)) {
-            throw new Error(`Bagian naskah ${i + 1} dari ${totalChunks} tidak ditemukan. Silakan ulangi unggah.`);
-          }
-          assembled.push(fs.readFileSync(partPath));
-        }
-        fileBuffer = Buffer.concat(assembled);
-
-        // Clean up temp directory
-        try {
-          fs.rmSync(tempDir, { recursive: true, force: true });
-        } catch (rmErr) {
-          console.warn('Gagal membersihkan direktori chunk sementara:', rmErr);
-        }
-      } else {
-        const file = formData.get('file') as File | null;
-        if (file) {
-          fileName = file.name;
-          mimeType = file.type || 'application/pdf';
-          const arrayBuffer = await file.arrayBuffer();
-          fileBuffer = Buffer.from(arrayBuffer);
-        }
-        fileName = (formData.get('fileName') as string) || fileName;
-        textContent = (formData.get('textContent') as string) || '';
+      const file = formData.get('file') as File | null;
+      if (file) {
+        fileName = file.name;
+        mimeType = file.type || 'application/pdf';
+        const arrayBuffer = await file.arrayBuffer();
+        fileBuffer = Buffer.from(arrayBuffer);
       }
+      fileName = (formData.get('fileName') as string) || fileName;
+      textContent = (formData.get('textContent') as string) || '';
+      fileUri = (formData.get('fileUri') as string) || '';
     } else {
       let body: any = {};
       try {
@@ -340,6 +346,7 @@ export async function POST(req: Request) {
       fileName = body.fileName || 'document.pdf';
       mimeType = body.mimeType || 'application/pdf';
       textContent = body.textContent || '';
+      fileUri = body.fileUri || '';
       if (body.fileBase64) {
         const cleanBase64 = body.fileBase64.includes(';base64,')
           ? body.fileBase64.split(';base64,')[1]
@@ -348,7 +355,7 @@ export async function POST(req: Request) {
       }
     }
 
-    if (!fileBuffer && !textContent) {
+    if (!fileUri && !fileBuffer && !textContent) {
       return NextResponse.json(
         { error: 'Mohon unggah berkas dokumen atau berikan konten naskah.' },
         { status: 400 }
@@ -383,15 +390,23 @@ ${textContent ? `\nIsi Teks Dokumen Tambahan:\n${textContent}` : ''}
 
     const parts: any[] = [];
 
-    if (fileBuffer) {
+    if (fileUri) {
+      console.log(`Using existing uploaded file URI: ${fileUri}`);
+      parts.push({
+        fileData: {
+          mimeType: mimeType,
+          fileUri: fileUri
+        }
+      });
+    } else if (fileBuffer) {
       try {
         if (fileBuffer.length > 1024 * 1024 || mimeType.includes('pdf')) {
           console.log(`Uploading ${fileName} (${(fileBuffer.length / 1024 / 1024).toFixed(2)} MB) to Gemini Files API...`);
-          const fileUri = await uploadToGeminiFilesApi(fileBuffer, mimeType, fileName);
+          const uploadedUri = await uploadToGeminiFilesApi(fileBuffer, mimeType, fileName);
           parts.push({
             fileData: {
               mimeType: mimeType,
-              fileUri: fileUri
+              fileUri: uploadedUri
             }
           });
         } else {

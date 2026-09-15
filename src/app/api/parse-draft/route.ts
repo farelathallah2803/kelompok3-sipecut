@@ -7,6 +7,41 @@ export const maxDuration = 120;
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
+function cleanAndParseJson(raw: string): any {
+  if (!raw || !raw.trim()) {
+    throw new Error('Konten data JSON dari AI kosong.');
+  }
+
+  let cleaned = raw.trim().replace(/^\uFEFF/, '');
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (initialErr) {
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      try {
+        return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+      } catch {
+        // Continue
+      }
+    }
+
+    const firstBracket = cleaned.indexOf('[');
+    const lastBracket = cleaned.lastIndexOf(']');
+    if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+      try {
+        return JSON.parse(cleaned.slice(firstBracket, lastBracket + 1));
+      } catch {
+        // Continue
+      }
+    }
+
+    throw new Error(`Format respons AI bukan JSON valid: ${cleaned.slice(0, 150)}`);
+  }
+}
+
 async function uploadToGeminiFilesApi(buffer: Buffer, mime: string, displayName: string): Promise<string> {
   const uploadInitUrl = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${GEMINI_API_KEY}`;
 
@@ -49,7 +84,14 @@ async function uploadToGeminiFilesApi(buffer: Buffer, mime: string, displayName:
     throw new Error(`Gagal upload berkas ke Gemini Files API (${uploadRes.status}): ${errText.slice(0, 200)}`);
   }
 
-  const fileInfo = await uploadRes.json();
+  const uploadResText = await uploadRes.text();
+  let fileInfo: any;
+  try {
+    fileInfo = JSON.parse(uploadResText.trim().replace(/^\uFEFF/, ''));
+  } catch {
+    throw new Error(`Gemini Files API mengembalikan respons bukan JSON (${uploadRes.status}): ${uploadResText.slice(0, 150)}`);
+  }
+
   if (!fileInfo?.file?.uri) {
     throw new Error('Gemini Files API tidak mengembalikan URI berkas aktif.');
   }
@@ -84,7 +126,18 @@ export async function POST(req: Request) {
       fileName = (formData.get('fileName') as string) || fileName;
       textContent = (formData.get('textContent') as string) || '';
     } else {
-      const body = await req.json();
+      let body: any = {};
+      try {
+        const bodyText = await req.text();
+        if (bodyText && bodyText.trim()) {
+          body = cleanAndParseJson(bodyText);
+        }
+      } catch {
+        return NextResponse.json(
+          { error: 'Payload permintaan bukan JSON yang valid.' },
+          { status: 400 }
+        );
+      }
       fileName = body.fileName || 'document.pdf';
       mimeType = body.mimeType || 'application/pdf';
       textContent = body.textContent || '';
@@ -257,14 +310,21 @@ ${textContent ? `\nIsi Teks Dokumen Tambahan:\n${textContent}` : ''}
       throw new Error(`Gemini API mengembalikan status ${response.status}: ${errBody.slice(0, 200)}`);
     }
 
-    const resJson = await response.json();
+    const responseText = await response.text();
+    let resJson: any;
+    try {
+      resJson = cleanAndParseJson(responseText);
+    } catch {
+      throw new Error(`Respons dari Gemini API bukan format JSON yang valid (HTTP ${response.status}): ${responseText.slice(0, 150)}`);
+    }
+
     const candidate = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!candidate) {
       throw new Error('Gemini AI tidak mengembalikan konten teks bedah dokumen.');
     }
 
-    const parsedData = JSON.parse(candidate);
+    const parsedData = cleanAndParseJson(candidate);
 
     // Flexible Satker matching - prioritize Departemen Hukum (DHK)
     const rawSatker = (parsedData.rubrikSatker || parsedData.unitKerja || '').trim();

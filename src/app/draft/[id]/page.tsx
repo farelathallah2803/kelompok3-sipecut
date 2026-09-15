@@ -47,6 +47,21 @@ import StageTracker from '@/components/workflow/StageTracker';
 import HarmonizationChecker from '@/components/compliance/HarmonizationChecker';
 import ApprovalModal from '@/components/workflow/ApprovalModal';
 
+function safeClone<T>(val: T): T {
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(val);
+    } catch {
+      // Fallback
+    }
+  }
+  try {
+    return JSON.parse(JSON.stringify(val));
+  } catch {
+    return val;
+  }
+}
+
 export default function DraftDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -68,8 +83,8 @@ export default function DraftDetailPage() {
     const found = getDraftById(draftId);
     if (found) {
       setDraft({ ...found });
-      setEditableChapters(found.chapters ? JSON.parse(JSON.stringify(found.chapters)) : []);
-      setEditableDefs(found.generalProvisions?.definitions ? JSON.parse(JSON.stringify(found.generalProvisions.definitions)) : []);
+      setEditableChapters(found.chapters ? safeClone(found.chapters) : []);
+      setEditableDefs(found.generalProvisions?.definitions ? safeClone(found.generalProvisions.definitions) : []);
     }
     setActiveRole(getActiveRole());
   };
@@ -237,8 +252,8 @@ export default function DraftDetailPage() {
 
   const handleCancelSubstanceChanges = () => {
     if (draft) {
-      setEditableChapters(draft.chapters ? JSON.parse(JSON.stringify(draft.chapters)) : []);
-      setEditableDefs(draft.generalProvisions?.definitions ? JSON.parse(JSON.stringify(draft.generalProvisions.definitions)) : []);
+      setEditableChapters(draft.chapters ? safeClone(draft.chapters) : []);
+      setEditableDefs(draft.generalProvisions?.definitions ? safeClone(draft.generalProvisions.definitions) : []);
     }
     setIsEditingSubstance(false);
   };

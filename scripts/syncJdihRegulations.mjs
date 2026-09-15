@@ -1,4 +1,4 @@
-﻿import fs from "fs";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -22,11 +22,16 @@ async function sync() {
   try {
     const tRes = await fetch("https://jdih.bi.go.id/api/DropDown/GetTaksonomi");
     if (tRes.ok) {
-      const tJson = await tRes.json();
-      if (tJson?.Data) {
-        for (const item of tJson.Data) {
-          taksonomiMap[String(item.Id)] = item.Description;
+      const tText = await tRes.text();
+      try {
+        const tJson = JSON.parse(tText.trim().replace(/^\uFEFF/, ''));
+        if (tJson?.Data) {
+          for (const item of tJson.Data) {
+            taksonomiMap[String(item.Id)] = item.Description;
+          }
         }
+      } catch {
+        // Fallback silently to default taxonomy
       }
     }
   } catch (err) {

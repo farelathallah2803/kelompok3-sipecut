@@ -147,9 +147,17 @@ export default function UploadDraftForm() {
       const rawText = await response.text();
       let result: any;
       try {
-        result = JSON.parse(rawText);
+        const cleanText = (rawText || '').trim().replace(/^\uFEFF/, '');
+        result = JSON.parse(cleanText);
       } catch (parseErr) {
-        throw new Error(`Gagal memproses respons server (${response.status}): ${rawText.slice(0, 150)}`);
+        if (response.status === 413) {
+          throw new Error('Ukuran berkas melebihi batas muatan server (Payload Too Large). Gunakan berkas naskah yang lebih kecil.');
+        } else if (response.status === 504 || response.status === 502) {
+          throw new Error('Koneksi server waktu habis (Gateway Timeout) saat membedah dokumen dengan AI. Silakan coba kembali.');
+        } else {
+          const cleanErr = (rawText || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 150);
+          throw new Error(`Gagal memproses respons server (HTTP ${response.status}): ${cleanErr || 'Respons server kosong atau bukan JSON yang valid.'}`);
+        }
       }
 
       if (!response.ok || !result.success) {

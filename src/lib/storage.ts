@@ -164,7 +164,7 @@ export function getDrafts(): PetunjukTeknisDraft[] {
   if (typeof window === 'undefined') return INITIAL_DRAFTS;
   try {
     const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) {
+    if (!data || data === 'undefined' || data === 'null' || !data.trim()) {
       const seeded = INITIAL_DRAFTS.map(d => ({
         ...d,
         workflowType: getWorkflowType(d),
@@ -174,7 +174,11 @@ export function getDrafts(): PetunjukTeknisDraft[] {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
       return seeded;
     }
-    const parsed: PetunjukTeknisDraft[] = JSON.parse(data);
+    const cleanData = data.trim().replace(/^\uFEFF/, '');
+    const parsed: PetunjukTeknisDraft[] = JSON.parse(cleanData);
+    if (!Array.isArray(parsed)) {
+      throw new Error('Data draf tersimpan bukan array valid');
+    }
     const juknisDrafts = parsed.filter(d => (d.workflowType || getWorkflowType(d)) === 'juknis');
     return juknisDrafts.map(d => ({
       ...d,
@@ -182,8 +186,19 @@ export function getDrafts(): PetunjukTeknisDraft[] {
       typography: d.typography || { ...DEFAULT_BI_TYPOGRAPHY }
     }));
   } catch (e) {
-    console.error('Failed to load drafts from localStorage', e);
-    return INITIAL_DRAFTS;
+    console.error('Failed to load drafts from localStorage, memulihkan data bawaan:', e);
+    try {
+      const seeded = INITIAL_DRAFTS.map(d => ({
+        ...d,
+        workflowType: getWorkflowType(d),
+        typography: d.typography || { ...DEFAULT_BI_TYPOGRAPHY },
+        complianceSummary: runHarmonizationAnalysis(d)
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
+      return seeded;
+    } catch {
+      return INITIAL_DRAFTS;
+    }
   }
 }
 
@@ -193,22 +208,26 @@ export function getDraftById(id: string): PetunjukTeknisDraft | undefined {
 }
 
 export function saveDraft(draft: PetunjukTeknisDraft): void {
-  if (typeof window === 'undefined') return;
-  const drafts = getDrafts();
-  const existingIdx = drafts.findIndex(d => d.id === draft.id);
-  
-  draft.workflowType = getWorkflowType(draft);
-  draft.complianceSummary = runHarmonizationAnalysis(draft);
-  draft.updatedAt = new Date().toISOString();
+  if (typeof window === 'undefined' || !draft) return;
+  try {
+    const drafts = getDrafts();
+    const existingIdx = drafts.findIndex(d => d.id === draft.id);
+    
+    draft.workflowType = getWorkflowType(draft);
+    draft.complianceSummary = runHarmonizationAnalysis(draft);
+    draft.updatedAt = new Date().toISOString();
 
-  if (existingIdx >= 0) {
-    drafts[existingIdx] = draft;
-  } else {
-    drafts.unshift(draft);
+    if (existingIdx >= 0) {
+      drafts[existingIdx] = draft;
+    } else {
+      drafts.unshift(draft);
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
+    window.dispatchEvent(new Event('juknis_storage_updated'));
+  } catch (err) {
+    console.error('Error saving draft to localStorage:', err);
   }
-
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
-  window.dispatchEvent(new Event('juknis_storage_updated'));
 }
 
 export function updateDraftWorkflow(

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
@@ -84,7 +84,15 @@ export default function ApprovalModal({
     }
   });
 
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(() => {
+    if (draft.currentStage === 'juknis_evaluasi_dmst') {
+      return 'Seluruh materi naskah telah dievaluasi dan dinyatakan selaras dengan kerangka tata kelola kelembagaan serta rencana strategis Bank Indonesia.';
+    }
+    if (draft.currentStage === 'juknis_publikasi_dhk') {
+      return 'Naskah Petunjuk Teknis telah selesai melalui seluruh rangkaian reviu teknis, evaluasi tata kelola DMST, serta persetujuan dewan, dan secara resmi diundangkan serta dipublikasikan pada repositori ketentuan internal Bank Indonesia.';
+    }
+    return '';
+  });
 
   // PBI / PADG specific states
   const [beritaAcaraNumber, setBeritaAcaraNumber] = useState(`BA-HARM/0${new Date().getMonth() + 1}/KUMHAM-KEMENKEU/${new Date().getFullYear()}`);
@@ -114,6 +122,15 @@ export default function ApprovalModal({
   const [rdgDecisions, setRdgDecisions] = useState('Dewan Gubernur menyetujui substansi regulasi dan mengesahkan untuk dilanjutkan ke tahap persetujuan ADG Pembina.');
 
   const [adgApprovalStatus, setAdgApprovalStatus] = useState<'Disetujui Penuh' | 'Disetujui Dengan Catatan'>('Disetujui Penuh');
+
+  // DHk Publication states
+  const [publishRegistrationNo, setPublishRegistrationNo] = useState(
+    draft.code ? `${draft.code}-REG` : `REG/JUKNIS/${new Date().getFullYear()}/001`
+  );
+  const [publishDate, setPublishDate] = useState(new Date().toISOString().split('T')[0]);
+  const [jdihRepositoryUrl, setJdihRepositoryUrl] = useState(
+    `https://jdih.bi.go.id/Web/DaftarPeraturan/Detail/${Date.now().toString().slice(-5)}`
+  );
 
   const determineNextStep = (): { nextStage: WorkflowStage; nextStatus: WorkflowStatus } => {
     return determineNextWorkflowStep(workflowType, draft.currentStage, decision);
@@ -201,6 +218,15 @@ export default function ApprovalModal({
         signedDate,
         decreeNumber,
         validityNotes: 'Naskah resmi telah ditetapkan dan ditandatangani oleh Gubernur Bank Indonesia.'
+      };
+    }
+
+    if (draft.currentStage === 'juknis_publikasi_dhk' || draft.currentStage === 'pbi_publish' || draft.currentStage === 'padg_publish' || activeRole === 'dhuk_legal') {
+      reviewPayload.publicationDetails = {
+        registrationNumber: publishRegistrationNo,
+        publishedDate: publishDate,
+        jdihUrl: jdihRepositoryUrl,
+        publisher: reviewerName
       };
     }
 
@@ -664,6 +690,45 @@ export default function ApprovalModal({
                     className="w-full px-3 py-1.5 rounded border border-amber-300 bg-white font-mono text-xs"
                   />
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* 6. Specialized Stage: Publikasi & Pengundangan Resmi oleh Departemen Hukum (DHk) */}
+          {(draft.currentStage === 'juknis_publikasi_dhk' || draft.currentStage === 'pbi_publish' || draft.currentStage === 'padg_publish') && (
+            <div className="bg-emerald-50/70 p-4 rounded-xl border border-emerald-200 space-y-3">
+              <div className="flex items-center space-x-2 text-emerald-900 font-bold">
+                <Send className="w-4 h-4 text-emerald-700" />
+                <span>Publikasi &amp; Pengundangan Resmi Repositori JDIH BI (Departemen Hukum):</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Nomor Registrasi / Berita JDIH BI:</label>
+                  <input
+                    type="text"
+                    value={publishRegistrationNo}
+                    onChange={(e) => setPublishRegistrationNo(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded border border-emerald-300 bg-white font-mono text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Tanggal Publikasi Efektif:</label>
+                  <input
+                    type="date"
+                    value={publishDate}
+                    onChange={(e) => setPublishDate(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded border border-emerald-300 bg-white text-xs font-mono"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Tautan Repositori JDIH Bank Indonesia:</label>
+                <input
+                  type="text"
+                  value={jdihRepositoryUrl}
+                  onChange={(e) => setJdihRepositoryUrl(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded border border-emerald-300 bg-white font-mono text-xs text-blue-700"
+                />
               </div>
             </div>
           )}

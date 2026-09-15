@@ -169,6 +169,12 @@ export interface ReviewNote {
     decreeNumber: string;
     validityNotes: string;
   };
+  publicationDetails?: {
+    registrationNumber: string;
+    publishedDate: string;
+    jdihUrl: string;
+    publisher?: string;
+  };
   createdAt: string;
 }
 

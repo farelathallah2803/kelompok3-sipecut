@@ -27,7 +27,8 @@ export const ALLOWED_ROLES: UserRole[] = [
   'pimpinan_satker',
   'dhuk_legal',
   'dmr_reviewer',
-  'dai_auditor'
+  'dai_auditor',
+  'dmst_governance'
 ];
 
 export const ROLE_DEFINITIONS: Record<UserRole, { label: string; badge: string; color: string; desc: string }> = {
@@ -61,17 +62,17 @@ export const ROLE_DEFINITIONS: Record<UserRole, { label: string; badge: string; 
     color: 'bg-slate-100 text-slate-800 border-slate-200',
     desc: 'Evaluasi sistem pengendalian intern dan kelayakan audit'
   },
+  dmst_governance: {
+    label: 'DMST',
+    badge: 'DMST',
+    color: 'bg-cyan-50 text-cyan-800 border-cyan-200',
+    desc: 'Evaluasi keselarasan strategi & tata kelola naskah'
+  },
   kemenkum_kemenkeu: {
     label: 'Kemenkum & Kemenkeu',
     badge: 'Kemenkum & Kemenkeu',
     color: 'bg-slate-100 text-slate-800 border-slate-200',
     desc: 'Harmonisasi kementerian'
-  },
-  dmst_governance: {
-    label: 'DMST',
-    badge: 'DMST',
-    color: 'bg-slate-100 text-slate-800 border-slate-200',
-    desc: 'Evaluasi tata kelola'
   },
   sekretariat_rdg: {
     label: 'Sekretariat RDG',

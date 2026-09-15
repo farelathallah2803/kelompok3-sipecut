@@ -166,7 +166,7 @@ const JUKNIS_STEPS: StepDetail[] = [
     code: '4',
     title: 'Pembahasan di RDG',
     actor: 'Rapat Dewan Gubernur',
-    desc: 'Pembahasan dan finalisasi kebijakan dalam Rapat Dewan Gubernur (RDG)',
+    desc: 'Pembahasan kebijakan dalam RDG (auto-disetujui pada simulasi prototype)',
     icon: <Landmark className="w-5 h-5" />
   },
   {
@@ -174,15 +174,15 @@ const JUKNIS_STEPS: StepDetail[] = [
     code: '5',
     title: 'Persetujuan ADG',
     actor: 'ADG Pembina Satker',
-    desc: 'Persetujuan oleh Anggota Dewan Gubernur yang membawahi Satker pemrakarsa',
+    desc: 'Persetujuan ADG Pembina (auto-disetujui pada simulasi prototype)',
     icon: <Gavel className="w-5 h-5" />
   },
   {
     key: 'juknis_publikasi_dhk',
     code: '6',
     title: 'Publikasi oleh DHk',
-    actor: 'Departemen Hukum (DHk)',
-    desc: 'Penomoran naskah resmi, registrasi, dan publikasi internal BI',
+    actor: 'Departemen Hukum (Legal DHk)',
+    desc: 'Penomoran naskah resmi, registrasi, dan publikasi internal BI oleh Legal DHk',
     icon: <Send className="w-5 h-5" />
   }
 ];
@@ -445,6 +445,20 @@ export default function StageTracker({
                     <div className="text-[11px] bg-amber-50 border border-amber-200 p-2 rounded text-amber-900 mt-1">
                       <span className="font-bold block">Penetapan &amp; Penandatanganan Gubernur BI:</span>
                       <div>Tanggal TTD: {note.gubernurSignature.signedDate} | SK/Lembaran: <span className="font-mono font-bold">{note.gubernurSignature.decreeNumber}</span></div>
+                    </div>
+                  )}
+
+                  {note.publicationDetails && (
+                    <div className="text-[11px] bg-emerald-50 border border-emerald-200 p-2 rounded text-emerald-900 mt-1">
+                      <span className="font-bold block">Dokumen Resmi Diundangkan &amp; Dipublikasikan oleh Departemen Hukum (DHk):</span>
+                      <div>No. Reg: <span className="font-mono font-bold">{note.publicationDetails.registrationNumber}</span> | Tanggal: <span className="font-bold">{note.publicationDetails.publishedDate}</span></div>
+                      {note.publicationDetails.jdihUrl && (
+                        <div className="mt-0.5">
+                          <a href={note.publicationDetails.jdihUrl} target="_blank" rel="noreferrer" className="text-blue-700 hover:underline font-mono text-[10px]">
+                            {note.publicationDetails.jdihUrl}
+                          </a>
+                        </div>
+                      )}
                     </div>
                   )}
 

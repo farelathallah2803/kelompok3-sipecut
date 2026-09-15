@@ -36,6 +36,7 @@ import {
 import { 
   getDraftById, 
   getActiveRole, 
+  setActiveRole as setStoredActiveRole,
   getStageLabel, 
   saveDraft, 
   canRoleActOnStage, 
@@ -119,7 +120,7 @@ export default function DraftDetailPage() {
   }
 
   const canReviewCurrentStage = () => {
-    if (draft.status === 'approved' || draft.currentStage === 'pbi_publish' || draft.currentStage === 'padg_publish' || draft.currentStage === 'juknis_publikasi_dhk' || draft.currentStage === 'ditetapkan') return false;
+    if (draft.status === 'approved' || draft.currentStage === 'ditetapkan') return false;
     return canRoleActOnStage(draft.currentStage, activeRole, draft.workflowType || getWorkflowType(draft));
   };
 
@@ -377,26 +378,70 @@ export default function DraftDetailPage() {
                 <span className="text-blue-800 bg-blue-50 px-2 py-0.5 rounded font-semibold border border-blue-100">
                   {getStageLabel(draft.currentStage)}
                 </span>
+                {draft.currentStage === 'juknis_publikasi_dhk' && (
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">
+                    Tahap Akhir Publikasi
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-slate-500 mt-0.5">
                 {isMatchingRole 
-                  ? `Peran aktif Anda (${ROLE_DEFINITIONS[activeRole]?.label}) berwenang memproses persetujuan.`
-                  : `Menunggu telaah dari ${getStageLabel(draft.currentStage)}.`}
+                  ? `Peran aktif Anda (${ROLE_DEFINITIONS[activeRole]?.label}) berwenang memproses tahapan ini.`
+                  : `Menunggu tindakan dari ${getStageLabel(draft.currentStage)}.`}
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2 shrink-0">
+            {/* Quick role switcher helpers for smooth prototype testing */}
+            {!isMatchingRole && draft.currentStage === 'juknis_evaluasi_dmst' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setStoredActiveRole('dmst_governance');
+                  setActiveRole('dmst_governance');
+                }}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-50 text-cyan-800 hover:bg-cyan-100 border border-cyan-200 transition shadow-2xs"
+                title="Beralih ke akun DMST untuk evaluasi tata kelola"
+              >
+                Beralih ke Akun DMST
+              </button>
+            )}
+
+            {!isMatchingRole && (draft.currentStage === 'juknis_publikasi_dhk' || draft.currentStage === 'pbi_publish' || draft.currentStage === 'padg_publish') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setStoredActiveRole('dhuk_legal');
+                  setActiveRole('dhuk_legal');
+                }}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 transition shadow-2xs"
+                title="Beralih ke akun Legal DHk untuk persetujuan publikasi resmi"
+              >
+                Beralih ke Akun Legal DHk
+              </button>
+            )}
+
             <button
               onClick={() => setIsApprovalOpen(true)}
               className={`px-3.5 py-2 rounded-lg text-xs font-semibold shadow-xs transition flex items-center space-x-1.5 ${
                 isMatchingRole 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                  ? draft.currentStage === 'juknis_publikasi_dhk'
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white' 
                   : 'bg-slate-800 hover:bg-slate-900 text-white'
               }`}
             >
               <Send className="w-3.5 h-3.5" />
-              <span>{isMatchingRole ? 'Input Telaah & Keputusan' : 'Proses Approval (Simulasi)'}</span>
+              <span>
+                {isMatchingRole 
+                  ? draft.currentStage === 'juknis_publikasi_dhk'
+                    ? 'Publikasikan Naskah Juknis (DHk)'
+                    : draft.currentStage === 'juknis_evaluasi_dmst'
+                    ? 'Evaluasi & Setujui (DMST)'
+                    : 'Input Telaah & Keputusan'
+                  : 'Proses Approval (Simulasi)'}
+              </span>
             </button>
           </div>
         </div>

@@ -83,6 +83,24 @@ export function determineNextWorkflowStep(
   if (currentStage === 'dai') return { nextStage: 'dhuk', nextStatus: 'in_review' };
   if (currentStage === 'dhuk') return { nextStage: 'ditetapkan', nextStatus: 'approved' };
 
+  // Khusus Alur Juknis dengan auto-approval RDG & ADG (Simulasi Prototype)
+  if (workflowType === 'juknis' && decision === 'approve') {
+    if (currentStage === 'juknis_evaluasi_dmst') {
+      // Dari evaluasi DMST => auto-setujui tahap RDG & ADG => langsung ke tahap Publikasi DHk!
+      return { nextStage: 'juknis_publikasi_dhk', nextStatus: 'in_review' };
+    }
+    if (currentStage === 'juknis_pembahasan_rdg') {
+      // Dari pembahasan RDG => auto-setujui ADG => langsung ke tahap Publikasi DHk!
+      return { nextStage: 'juknis_publikasi_dhk', nextStatus: 'in_review' };
+    }
+    if (currentStage === 'juknis_persetujuan_adg') {
+      return { nextStage: 'juknis_publikasi_dhk', nextStatus: 'in_review' };
+    }
+    if (currentStage === 'juknis_publikasi_dhk') {
+      return { nextStage: 'juknis_publikasi_dhk', nextStatus: 'approved' };
+    }
+  }
+
   const currentIndex = stages.indexOf(currentStage as any);
   if (currentIndex === -1 || currentIndex >= stages.length - 1) {
     return { nextStage: stages[stages.length - 1], nextStatus: 'approved' };
@@ -136,9 +154,9 @@ export function canRoleActOnStage(
     case 'juknis_evaluasi_dmst':
       return role === 'dmst_governance';
     case 'juknis_pembahasan_rdg':
-      return role === 'sekretariat_rdg';
+      return role === 'sekretariat_rdg' || role === 'dmst_governance' || role === 'dhuk_legal';
     case 'juknis_persetujuan_adg':
-      return role === 'adg_pembina';
+      return role === 'adg_pembina' || role === 'dmst_governance' || role === 'dhuk_legal';
     case 'juknis_publikasi_dhk':
       return role === 'dhuk_legal';
 
@@ -265,6 +283,93 @@ export function updateDraftWorkflow(
 
   draft.history = draft.history || [];
   draft.history.push(logItem);
+
+  // Auto-record RDG and ADG approval logs in prototype simulation
+  if (reviewNote.stage === 'juknis_evaluasi_dmst' && newStage === 'juknis_publikasi_dhk' && reviewNote.decision === 'approve') {
+    const now = Date.now();
+    
+    // Auto-approve RDG
+    draft.reviewNotes.push({
+      id: `rev-rdg-${now}`,
+      stage: 'juknis_pembahasan_rdg',
+      reviewerRole: 'sekretariat_rdg',
+      reviewerName: 'Sekretariat Dewan Gubernur (Auto-Approved)',
+      department: 'Sekretariat Dewan Gubernur',
+      decision: 'approve',
+      notes: 'Pembahasan Rapat Dewan Gubernur (RDG) disetujui secara otomatis (Simulasi Prototype BI). Disahkan untuk penetapan ADG Pembina.',
+      createdAt: new Date(now + 100).toISOString(),
+      rdgAssessment: {
+        meetingDate: new Date().toLocaleDateString('id-ID', { dateStyle: 'long' }),
+        resolutionNumber: `RDG-BI/${new Date().getFullYear()}/${String(new Date().getMonth() + 1).padStart(2, '0')}/DEC-AUTO`,
+        decisions: 'Dewan Gubernur menyetujui materi naskah juknis dan melimpahkan penetapan ke ADG Pembina.'
+      }
+    });
+
+    draft.history.push({
+      id: `log-rdg-${now}`,
+      timestamp: new Date(now + 100).toISOString(),
+      actor: 'Sekretariat Dewan Gubernur (Auto-Approved)',
+      role: 'Sekretariat RDG',
+      action: 'Disetujui Otomatis: Pembahasan Rapat Dewan Gubernur (RDG)',
+      stage: 'juknis_pembahasan_rdg',
+      details: 'Pembahasan RDG disetujui secara otomatis dalam simulasi prototype.'
+    });
+
+    // Auto-approve ADG
+    draft.reviewNotes.push({
+      id: `rev-adg-${now + 200}`,
+      stage: 'juknis_persetujuan_adg',
+      reviewerRole: 'adg_pembina',
+      reviewerName: 'Anggota Dewan Gubernur Pembina (Auto-Approved)',
+      department: 'Dewan Gubernur Bank Indonesia',
+      decision: 'approve',
+      notes: 'Persetujuan dan penetapan oleh ADG Pembina disetujui secara otomatis (Simulasi Prototype BI). Naskah siap dipublikasikan oleh Departemen Hukum (DHk).',
+      createdAt: new Date(now + 200).toISOString(),
+      adgApproval: {
+        adgName: 'ADG Pembina Sektor Terkait',
+        portfolioSector: draft.category || 'Tata Kelola & Kepatuhan',
+        approvalStatus: 'Disetujui Penuh'
+      }
+    });
+
+    draft.history.push({
+      id: `log-adg-${now + 200}`,
+      timestamp: new Date(now + 200).toISOString(),
+      actor: 'Anggota Dewan Gubernur Pembina (Auto-Approved)',
+      role: 'ADG Pembina',
+      action: 'Disetujui Otomatis: Persetujuan ADG Pembina',
+      stage: 'juknis_persetujuan_adg',
+      details: 'Persetujuan ADG Pembina disetujui secara otomatis dalam simulasi prototype. Naskah diteruskan ke Departemen Hukum (DHk) untuk publikasi resmi.'
+    });
+  } else if (reviewNote.stage === 'juknis_pembahasan_rdg' && newStage === 'juknis_publikasi_dhk' && reviewNote.decision === 'approve') {
+    const now = Date.now();
+    // Auto-approve ADG
+    draft.reviewNotes.push({
+      id: `rev-adg-${now + 200}`,
+      stage: 'juknis_persetujuan_adg',
+      reviewerRole: 'adg_pembina',
+      reviewerName: 'Anggota Dewan Gubernur Pembina (Auto-Approved)',
+      department: 'Dewan Gubernur Bank Indonesia',
+      decision: 'approve',
+      notes: 'Persetujuan dan penetapan oleh ADG Pembina disetujui secara otomatis (Simulasi Prototype BI). Naskah siap dipublikasikan oleh Departemen Hukum (DHk).',
+      createdAt: new Date(now + 200).toISOString(),
+      adgApproval: {
+        adgName: 'ADG Pembina Sektor Terkait',
+        portfolioSector: draft.category || 'Tata Kelola & Kepatuhan',
+        approvalStatus: 'Disetujui Penuh'
+      }
+    });
+
+    draft.history.push({
+      id: `log-adg-${now + 200}`,
+      timestamp: new Date(now + 200).toISOString(),
+      actor: 'Anggota Dewan Gubernur Pembina (Auto-Approved)',
+      role: 'ADG Pembina',
+      action: 'Disetujui Otomatis: Persetujuan ADG Pembina',
+      stage: 'juknis_persetujuan_adg',
+      details: 'Persetujuan ADG Pembina disetujui secara otomatis dalam simulasi prototype. Naskah diteruskan ke Departemen Hukum (DHk) untuk publikasi resmi.'
+    });
+  }
 
   saveDraft(draft);
   return draft;

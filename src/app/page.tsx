@@ -185,26 +185,26 @@ export default function DashboardPage() {
       </div>
 
       {/* Account Scope Indicator Banner */}
-      <div className="bg-white px-4 py-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+      <div className="bg-slate-100/70 px-4 py-3 rounded-xl border border-slate-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
         <div className="flex items-center space-x-2">
-          <span className="text-slate-400 font-medium">Cakupan Statistik &amp; Berkas:</span>
+          <span className="text-slate-500 font-medium">Cakupan Berkas:</span>
           {isGlobalReviewerRole ? (
-            <span className="font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-md">
+            <span className="font-semibold text-slate-800 bg-white border border-slate-200 px-2.5 py-0.5 rounded-md shadow-2xs">
               Penelaah Central ({activeRole.toUpperCase()}) &bull; {activeSatkerLabel}
             </span>
           ) : (
-            <span className="font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-md">
+            <span className="font-semibold text-slate-800 bg-white border border-slate-200 px-2.5 py-0.5 rounded-md shadow-2xs">
               Satker Pemrakarsa: {activeSatkerLabel}
             </span>
           )}
         </div>
 
         <div className="flex items-center space-x-2 shrink-0">
-          <span className="text-[11px] text-slate-400">Filter Satker (33 Satker BI):</span>
+          <span className="text-[11px] text-slate-500 font-medium">Filter Satker BI:</span>
           <select
             value={activeSatkerScope}
             onChange={(e) => setSelectedSatkerFilter(e.target.value)}
-            className="text-xs py-1.5 px-2.5 rounded-md border border-slate-200 bg-slate-50 font-semibold text-slate-800 focus:outline-hidden max-w-xs sm:max-w-sm truncate"
+            className="text-xs py-1 px-2.5 rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:outline-hidden max-w-xs sm:max-w-sm truncate shadow-2xs"
           >
             <option value="all">Semua 33 Satker (Global BI)</option>
             {SATUAN_KERJA_LIST.map((satker) => (
@@ -216,66 +216,83 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Clean Stat Strip (5 Columns) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
-          <div className="text-xs font-semibold text-slate-500">Total Berkas Juknis</div>
-          <div className="text-2xl font-black text-slate-900 mt-1">{totalCount}</div>
-        </div>
+      {/* Horizontal Metric Bar Strip (Unified Metrics Bar) */}
+      <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
+          <div className="p-4 sm:p-5">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Total Berkas</span>
+            <div className="flex items-center space-x-2 mt-1.5">
+              <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0"></span>
+              <span className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{totalCount}</span>
+            </div>
+          </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
-          <div className="text-xs font-semibold text-blue-600">Dalam Review</div>
-          <div className="text-2xl font-black text-blue-900 mt-1">{inReviewCount}</div>
-        </div>
+          <div className="p-4 sm:p-5">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Dalam Review</span>
+            <div className="flex items-center space-x-2 mt-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0"></span>
+              <span className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{inReviewCount}</span>
+            </div>
+          </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
-          <div className="text-xs font-semibold text-amber-600">Perlu Revisi</div>
-          <div className="text-2xl font-black text-amber-900 mt-1">{needRevisionCount}</div>
-        </div>
+          <div className="p-4 sm:p-5">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Perlu Revisi</span>
+            <div className="flex items-center space-x-2 mt-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+              <span className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{needRevisionCount}</span>
+            </div>
+          </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
-          <div className="text-xs font-semibold text-rose-600">Ditolak</div>
-          <div className="text-2xl font-black text-rose-900 mt-1">{rejectedCount}</div>
-        </div>
+          <div className="p-4 sm:p-5">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Ditolak</span>
+            <div className="flex items-center space-x-2 mt-1.5">
+              <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
+              <span className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{rejectedCount}</span>
+            </div>
+          </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
-          <div className="text-xs font-semibold text-emerald-600">Resmi Ditetapkan</div>
-          <div className="text-2xl font-black text-emerald-900 mt-1">{approvedCount}</div>
+          <div className="p-4 sm:p-5">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Resmi Ditetapkan</span>
+            <div className="flex items-center space-x-2 mt-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+              <span className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{approvedCount}</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Main Content Area: Filter & Drafts Table */}
+      {/* Main Content Area: Filter & Drafts Table (Canvas Clean Approach) */}
       <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
         {/* Filter Controls Bar */}
-        <div className="p-4 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-50/40">
-          {/* Juknis Scope Filter Tabs */}
-          <div className="flex items-center space-x-1 bg-slate-200/60 p-1 rounded-lg self-start overflow-x-auto shrink-0">
+        <div className="px-5 py-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          {/* Subtle Underline Tabs for Scope */}
+          <div className="flex items-center space-x-6 border-b border-slate-200 lg:border-b-0 text-xs font-semibold overflow-x-auto self-start shrink-0 pb-1 lg:pb-0">
             <button
               onClick={() => setSelectedScopeFilter('all')}
-              className={`px-3 py-1.5 text-xs rounded-md font-semibold transition ${
+              className={`pb-2 lg:pb-0 transition border-b-2 -mb-[17px] ${
                 selectedScopeFilter === 'all'
-                  ? 'bg-white text-slate-900 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'border-blue-600 text-blue-700 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-900'
               }`}
             >
               Semua Juknis ({totalCount})
             </button>
             <button
               onClick={() => setSelectedScopeFilter('INTERNAL')}
-              className={`px-3 py-1.5 text-xs rounded-md font-semibold transition ${
+              className={`pb-2 lg:pb-0 transition border-b-2 -mb-[17px] ${
                 selectedScopeFilter === 'INTERNAL'
-                  ? 'bg-white text-slate-900 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'border-blue-600 text-blue-700 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-900'
               }`}
             >
               Juknis Internal ({internalCount})
             </button>
             <button
               onClick={() => setSelectedScopeFilter('EKSTERNAL')}
-              className={`px-3 py-1.5 text-xs rounded-md font-semibold transition ${
+              className={`pb-2 lg:pb-0 transition border-b-2 -mb-[17px] ${
                 selectedScopeFilter === 'EKSTERNAL'
-                  ? 'bg-white text-slate-900 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'border-blue-600 text-blue-700 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-900'
               }`}
             >
               Juknis Eksternal ({eksternalCount})
@@ -298,7 +315,7 @@ export default function DashboardPage() {
             <select
               value={selectedStatusFilter}
               onChange={(e) => setSelectedStatusFilter(e.target.value)}
-              className="text-xs py-2 px-3 rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500 shrink-0"
+              className="text-xs py-2 px-3 rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500 shrink-0 font-medium"
             >
               <option value="all">Semua Status</option>
               <option value="in_review">Dalam Review</option>

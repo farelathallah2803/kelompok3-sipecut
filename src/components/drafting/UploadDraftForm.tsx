@@ -10,6 +10,7 @@ import {
   ArrowLeft, 
   Send, 
   AlertCircle,
+  AlertTriangle,
   FileCheck,
   Building,
   Scale,
@@ -81,6 +82,7 @@ export default function UploadDraftForm() {
   const [uploadedFile, setUploadedFile] = useState<UploadedDraftFile | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [warningMsg, setWarningMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -128,6 +130,7 @@ export default function UploadDraftForm() {
     setIsAnalyzing(true);
     setAnalysisStatus('Mempersiapkan analisis dokumen...');
     setErrorMsg('');
+    setWarningMsg('');
 
     try {
       let result: any;
@@ -221,6 +224,10 @@ export default function UploadDraftForm() {
         throw new Error('Hasil bedah dokumen AI tidak ditemukan.');
       }
 
+      if (result.warning) {
+        setWarningMsg(result.warning);
+      }
+
       const parsed = result.data;
 
       if (parsed.title) setTitle(parsed.title);
@@ -304,7 +311,11 @@ export default function UploadDraftForm() {
       }, 350);
     } catch (err: any) {
       console.error('Error dissecting document with AI:', err);
-      setErrorMsg(err.message || 'Terjadi kesalahan saat membedah dokumen dengan AI.');
+      let msg = err.message || 'Terjadi kesalahan saat membedah dokumen dengan AI.';
+      if (msg.includes('503') || msg.includes('high demand') || msg.includes('UNAVAILABLE')) {
+        msg = 'Layanan Google Gemini AI sedang mengalami lonjakan beban sesaat (503). Sistem telah mencoba beralih ke server alternatif. Silakan klik tombol "Ganti & Bedah Ulang" untuk mencoba kembali dalam beberapa detik.';
+      }
+      setErrorMsg(msg);
     } finally {
       setIsAnalyzing(false);
     }
@@ -604,6 +615,13 @@ export default function UploadDraftForm() {
         </div>
       )}
 
+      {warningMsg && (
+        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center space-x-2.5 shadow-2xs">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
+          <span>{warningMsg}</span>
+        </div>
+      )}
+
       {/* AI Analyzing Status Indicator */}
       {isAnalyzing && (
         <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-400 shadow-md space-y-3 animate-in fade-in duration-200">
@@ -615,7 +633,7 @@ export default function UploadDraftForm() {
               <h4 className="text-sm font-bold text-blue-950 flex items-center space-x-2">
                 <span>Gemini AI Sedang Membedah &amp; Menganalisis Dokumen...</span>
                 <span className="text-[10px] px-2 py-0.5 bg-blue-200 text-blue-900 rounded-full font-bold">
-                  Gemini 3.6 Flash
+                  Gemini 3.5 / 3.6 Multi-Model Engine
                 </span>
               </h4>
               <p className="text-xs text-blue-800 mt-0.5 font-medium">

@@ -114,6 +114,139 @@ async function uploadToGeminiFilesApi(buffer: Buffer, mime: string, displayName:
   return fileInfo.file.uri;
 }
 
+const CANDIDATE_MODELS = [
+  'gemini-3.5-flash',
+  'gemini-3.6-flash',
+  'gemini-3.7-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite'
+];
+
+async function generateContentWithFailover(
+  apiKey: string,
+  requestPayload: any
+): Promise<{ parsedData: any; usedModel: string }> {
+  let lastError: any = null;
+  let lastStatus = 0;
+
+  for (let mIdx = 0; mIdx < CANDIDATE_MODELS.length; mIdx++) {
+    const model = CANDIDATE_MODELS[mIdx];
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        console.log(`[Gemini API] Menghubungi model ${model} (percobaan ke-${attempt})...`);
+        const response = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestPayload)
+        });
+
+        if (response.ok) {
+          const responseText = await response.text();
+          const resJson = cleanAndParseJson(responseText);
+          const candidateText = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (candidateText) {
+            const parsedData = cleanAndParseJson(candidateText);
+            console.log(`[Gemini API] Berhasil mendapatkan respons dari model ${model}.`);
+            return { parsedData, usedModel: model };
+          }
+          throw new Error(`Model ${model} tidak mengembalikan bagian teks.`);
+        }
+
+        lastStatus = response.status;
+        const errBody = await response.text();
+        lastError = new Error(`Model ${model} mengembalikan status ${response.status}: ${errBody.slice(0, 250)}`);
+
+        // Handle 503 (high demand), 429 (rate limit), or 5xx server errors
+        if (response.status === 503 || response.status === 429 || response.status >= 500) {
+          console.warn(`[Gemini API] Model ${model} mengembalikan status ${response.status}. Menyiapkan failover...`);
+          const backoff = 1000 * Math.pow(1.5, attempt - 1) + Math.floor(Math.random() * 500);
+          await new Promise(r => setTimeout(r, backoff));
+          // If another model is available, switch immediately to next candidate
+          if (mIdx < CANDIDATE_MODELS.length - 1) {
+            break;
+          }
+        } else {
+          // If fatal client error on this model (e.g. 404), move to next model
+          break;
+        }
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[Gemini API] Kesalahan jaringan saat menghubungi ${model}:`, err.message);
+        await new Promise(r => setTimeout(r, 800 + Math.floor(Math.random() * 400)));
+      }
+    }
+  }
+
+  throw lastError || new Error(`Layanan Gemini AI sedang mengalami lonjakan beban (HTTP ${lastStatus || 503}).`);
+}
+
+function createFallbackDraft(fileName: string, textContent: string): any {
+  const cleanTitle = fileName
+    .replace(/\.[^/.]+$/, '')
+    .replace(/[_-]+/g, ' ')
+    .trim();
+
+  return {
+    title: cleanTitle.toUpperCase().startsWith('PETUNJUK TEKNIS') 
+      ? cleanTitle 
+      : `Petunjuk Teknis Mengenai ${cleanTitle}`,
+    code: `JUKNIS/${new Date().getFullYear()}/001`,
+    rubrikSatker: 'DHK',
+    unitKerja: 'Departemen Hukum (DHK)',
+    scope: 'INTERNAL',
+    templateType: 'templat_1',
+    category: 'Tata Kelola & Kepatuhan',
+    background: 'Petunjuk Teknis ini disusun sebagai pedoman operasional dan tata kelola pelaksanaan tugas teknis secara terstruktur, terpadu, dan akuntabel di lingkungan Bank Indonesia.',
+    purpose: 'Memberikan kejelasan prosedur operasional, mitigasi risiko hukum, dan standarisasi pelaksanaan tugas.',
+    legalBases: [
+      'Undang-Undang Nomor 23 Tahun 1999 tentang Bank Indonesia sebagaimana telah diubah beberapa kali, terakhir dengan Undang-Undang Nomor 4 Tahun 2023 tentang Pengembangan dan Penguatan Sektor Keuangan',
+      'Peraturan Bank Indonesia yang berlaku'
+    ],
+    definitions: [
+      {
+        term: 'Bank Indonesia',
+        meaning: 'Bank sentral Republik Indonesia yang mempunyai tujuan mencapai dan memelihara kestabilan nilai Rupiah.'
+      },
+      {
+        term: 'Petunjuk Teknis',
+        meaning: 'Ketentuan pelaksanaan teknis operasional yang mengikat bagi satuan kerja dan pihak pelaksana.'
+      }
+    ],
+    chapters: [
+      {
+        id: `chap-${Date.now()}-1`,
+        chapterNumber: 'BAB I',
+        title: 'KETENTUAN UMUM',
+        articles: [
+          {
+            id: `art-${Date.now()}-1-1`,
+            articleNumber: 'Pasal 1',
+            title: 'Definisi dan Ruang Lingkup',
+            content: `Ketentuan dalam Petunjuk Teknis mengenai ${cleanTitle} ini berlaku sebagai pedoman operasional bagi seluruh satuan kerja dan pihak terkait di lingkungan Bank Indonesia.`,
+            explanation: 'Cukup jelas'
+          }
+        ]
+      },
+      {
+        id: `chap-${Date.now()}-2`,
+        chapterNumber: 'BAB II',
+        title: 'TATA CARA DAN MEKANISME PELAKSANAAN',
+        articles: [
+          {
+            id: `art-${Date.now()}-2-1`,
+            articleNumber: 'Pasal 2',
+            title: 'Prosedur Teknis Operasional',
+            content: 'Setiap unit pelaksana wajib menerapkan prinsip tata kelola yang baik (good governance), mitigasi risiko terukur, dan pelaporan berkala sesuai dengan standar operasional yang ditetapkan.',
+            explanation: 'Cukup jelas'
+          }
+        ]
+      }
+    ]
+  };
+}
+
 export async function POST(req: Request) {
   try {
     const apiKey = getGeminiApiKey();
@@ -290,107 +423,90 @@ ${textContent ? `\nIsi Teks Dokumen Tambahan:\n${textContent}` : ''}
 
     parts.push({ text: promptText });
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
-
-    const response = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: parts
-          }
-        ],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: 'OBJECT',
-            properties: {
-              title: { type: 'STRING' },
-              code: { type: 'STRING' },
-              rubrikSatker: { type: 'STRING' },
-              unitKerja: { type: 'STRING' },
-              scope: { type: 'STRING', enum: ['INTERNAL', 'EKSTERNAL'] },
-              templateType: { type: 'STRING', enum: ['templat_1', 'templat_2', 'templat_3'] },
-              category: { type: 'STRING' },
-              background: { type: 'STRING' },
-              purpose: { type: 'STRING' },
-              legalBases: {
-                type: 'ARRAY',
-                items: { type: 'STRING' }
-              },
-              definitions: {
-                type: 'ARRAY',
-                items: {
-                  type: 'OBJECT',
-                  properties: {
-                    term: { type: 'STRING' },
-                    meaning: { type: 'STRING' }
-                  },
-                  required: ['term', 'meaning']
-                }
-              },
-              chapters: {
-                type: 'ARRAY',
-                items: {
-                  type: 'OBJECT',
-                  properties: {
-                    chapterNumber: { type: 'STRING' },
-                    title: { type: 'STRING' },
-                    articles: {
-                      type: 'ARRAY',
-                      items: {
-                        type: 'OBJECT',
-                        properties: {
-                          articleNumber: { type: 'STRING' },
-                          title: { type: 'STRING' },
-                          content: { type: 'STRING' },
-                          explanation: { type: 'STRING' }
-                        },
-                        required: ['articleNumber', 'title', 'content']
-                      }
-                    }
-                  },
-                  required: ['chapterNumber', 'title', 'articles']
-                }
+    const requestPayload = {
+      contents: [
+        {
+          parts: parts
+        }
+      ],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            title: { type: 'STRING' },
+            code: { type: 'STRING' },
+            rubrikSatker: { type: 'STRING' },
+            unitKerja: { type: 'STRING' },
+            scope: { type: 'STRING', enum: ['INTERNAL', 'EKSTERNAL'] },
+            templateType: { type: 'STRING', enum: ['templat_1', 'templat_2', 'templat_3'] },
+            category: { type: 'STRING' },
+            background: { type: 'STRING' },
+            purpose: { type: 'STRING' },
+            legalBases: {
+              type: 'ARRAY',
+              items: { type: 'STRING' }
+            },
+            definitions: {
+              type: 'ARRAY',
+              items: {
+                type: 'OBJECT',
+                properties: {
+                  term: { type: 'STRING' },
+                  meaning: { type: 'STRING' }
+                },
+                required: ['term', 'meaning']
               }
             },
-            required: [
-              'title',
-              'rubrikSatker',
-              'scope',
-              'templateType',
-              'background',
-              'chapters'
-            ]
-          }
+            chapters: {
+              type: 'ARRAY',
+              items: {
+                type: 'OBJECT',
+                properties: {
+                  chapterNumber: { type: 'STRING' },
+                  title: { type: 'STRING' },
+                  articles: {
+                    type: 'ARRAY',
+                    items: {
+                      type: 'OBJECT',
+                      properties: {
+                        articleNumber: { type: 'STRING' },
+                        title: { type: 'STRING' },
+                        content: { type: 'STRING' },
+                        explanation: { type: 'STRING' }
+                      },
+                      required: ['articleNumber', 'title', 'content']
+                    }
+                  }
+                },
+                required: ['chapterNumber', 'title', 'articles']
+              }
+            }
+          },
+          required: [
+            'title',
+            'rubrikSatker',
+            'scope',
+            'templateType',
+            'background',
+            'chapters'
+          ]
         }
-      })
-    });
+      }
+    };
 
-    if (!response.ok) {
-      const errBody = await response.text();
-      console.error('Gemini API Error:', errBody);
-      throw new Error(`Gemini API mengembalikan status ${response.status}: ${errBody.slice(0, 200)}`);
-    }
+    let parsedData: any;
+    let warningMsg: string | undefined;
 
-    const responseText = await response.text();
-    let resJson: any;
     try {
-      resJson = cleanAndParseJson(responseText);
-    } catch {
-      throw new Error(`Respons dari Gemini API bukan format JSON yang valid (HTTP ${response.status}): ${responseText.slice(0, 150)}`);
+      const { parsedData: resultData, usedModel } = await generateContentWithFailover(apiKey, requestPayload);
+      parsedData = resultData;
+      console.log(`[Bedah Dokumen] Berhasil diproses dengan model AI: ${usedModel}`);
+    } catch (aiErr: any) {
+      console.warn('[Bedah Dokumen] Seluruh model AI Gemini sedang overload (503), menggunakan draf cadangan:', aiErr.message);
+      warningMsg = 'Layanan Google Gemini AI sedang mengalami lonjakan beban (503). Draf naskah awal telah disusun otomatis berdasarkan berkas Anda; silakan lengkapi atau sesuaikan isi pasal.';
+      parsedData = createFallbackDraft(fileName, textContent);
     }
-
-    const candidate = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!candidate) {
-      throw new Error('Gemini AI tidak mengembalikan konten teks bedah dokumen.');
-    }
-
-    const parsedData = cleanAndParseJson(candidate);
 
     // Flexible Satker matching - prioritize Departemen Hukum (DHK)
     const rawSatker = (parsedData.rubrikSatker || parsedData.unitKerja || '').trim();
@@ -487,7 +603,8 @@ ${textContent ? `\nIsi Teks Dokumen Tambahan:\n${textContent}` : ''}
 
     return NextResponse.json({
       success: true,
-      data: parsedData
+      data: parsedData,
+      warning: warningMsg
     });
   } catch (err: any) {
     console.error('Server error during parse-draft:', err);

@@ -136,127 +136,52 @@ export default function UploadDraftForm() {
       let result: any;
       const DIRECT_UPLOAD_THRESHOLD = 3 * 1024 * 1024; // 3 MB - di atas ukuran ini, unggah langsung ke Google Files API untuk memotong batasan 4.5MB Vercel
 
-      if (file.size > DIRECT_UPLOAD_THRESHOLD) {
-        // 1. Inisiasi sesi unggah langsung ke Google Gemini Files API
-        setAnalysisStatus('Mempersiapkan sesi unggah berkas besar ke cloud AI...');
-        const sessionRes = await fetch('/api/parse-draft?action=create-upload-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fileName: file.name,
-            fileSize: file.size,
-            mimeType: file.type || 'application/pdf'
-          })
-        });
+      // Mengunggah berkas naskah via XHR ke /api/parse-draft dengan progress bar real-time
+      setAnalysisStatus(`Mengunggah berkas naskah (${(file.size / (1024 * 1024)).toFixed(1)} MB)... 0% selesai`);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('fileName', file.name);
+      formData.append('mimeType', file.type || 'application/pdf');
 
-        const rawSessionText = await sessionRes.text();
-        let sessionData: any;
-        try {
-          sessionData = JSON.parse(rawSessionText.trim().replace(/^\uFEFF/, ''));
-        } catch {
-          throw new Error(`Gagal menginisiasi sesi unggah naskah (HTTP ${sessionRes.status}).`);
-        }
+      const rawText = await new Promise<string>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/parse-draft');
 
-        if (!sessionRes.ok || !sessionData.uploadUrl) {
-          throw new Error(sessionData.error || 'Gagal membuat sesi unggah berkas naskah.');
-        }
-
-        // 2. Unggah berkas langsung ke Google Gemini Files API dengan progress bar real-time
-        setAnalysisStatus(`Mengunggah naskah (${(file.size / (1024 * 1024)).toFixed(1)} MB) langsung ke Google AI... (0%)`);
-
-        const uploadResult = await new Promise<any>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open('POST', sessionData.uploadUrl);
-          xhr.setRequestHeader('Content-Length', file.size.toString());
-          xhr.setRequestHeader('X-Goog-Upload-Offset', '0');
-          xhr.setRequestHeader('X-Goog-Upload-Command', 'upload, finalize');
-
-          xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) {
-              const percent = Math.round((event.loaded / event.total) * 100);
-              setAnalysisStatus(`Mengunggah naskah (${(file.size / (1024 * 1024)).toFixed(1)} MB)... ${percent}% selesai`);
-            }
-          };
-
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                const res = JSON.parse(xhr.responseText.trim().replace(/^\uFEFF/, ''));
-                resolve(res);
-              } catch {
-                reject(new Error('Gagal menguraikan konfirmasi unggah dari server Google Files.'));
-              }
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            if (percent < 100) {
+              setAnalysisStatus(`Mengunggah berkas naskah (${(file.size / (1024 * 1024)).toFixed(1)} MB)... ${percent}% selesai`);
             } else {
-              reject(new Error(`Gagal mengunggah berkas ke Google Files (HTTP ${xhr.status}): ${xhr.statusText}`));
+              setAnalysisStatus('Naskah berhasil diunggah! Gemini AI sedang membaca, menelaah & membedah pasal serta bab...');
             }
-          };
-
-          xhr.onerror = () => reject(new Error('Terjadi gangguan koneksi internet saat mengunggah berkas naskah.'));
-          xhr.send(file);
-        });
-
-        const uploadedFileUri = uploadResult.file?.uri;
-        if (!uploadedFileUri) {
-          throw new Error('Gagal memperoleh tautan berkas dari Google Files API.');
-        }
-
-        // 3. Panggil API parse-draft dengan fileUri (payload sangat ringan ~200 byte)
-        setAnalysisStatus('Naskah berhasil diunggah! Gemini AI sedang membaca, menelaah & membedah pasal serta bab...');
-        const response = await fetch('/api/parse-draft', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fileUri: uploadedFileUri,
-            fileName: file.name,
-            mimeType: file.type || 'application/pdf'
-          })
-        });
-
-        const rawText = await response.text();
-        try {
-          const cleanText = (rawText || '').trim().replace(/^\uFEFF/, '');
-          result = JSON.parse(cleanText);
-        } catch {
-          const cleanErr = (rawText || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 150);
-          throw new Error(`Gagal memproses analisis AI (HTTP ${response.status}): ${cleanErr || 'Respons bukan JSON valid.'}`);
-        }
-
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || 'Gagal membedah dokumen dengan AI.');
-        }
-      } else {
-        // Direct single upload untuk berkas <= 3 MB
-        setAnalysisStatus('Mengunggah berkas naskah...');
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('fileName', file.name);
-        formData.append('mimeType', file.type || 'application/pdf');
-
-        setAnalysisStatus('Gemini AI sedang membaca, menelaah & membedah pasal, bab, serta definisi...');
-
-        const response = await fetch('/api/parse-draft', {
-          method: 'POST',
-          body: formData
-        });
-
-        const rawText = await response.text();
-        try {
-          const cleanText = (rawText || '').trim().replace(/^\uFEFF/, '');
-          result = JSON.parse(cleanText);
-        } catch {
-          if (response.status === 413) {
-            throw new Error('Ukuran berkas melebihi batas muatan server (Payload Too Large).');
-          } else if (response.status === 504 || response.status === 502) {
-            throw new Error('Koneksi server waktu habis (Gateway Timeout) saat membedah dokumen dengan AI. Silakan coba kembali.');
-          } else {
-            const cleanErr = (rawText || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 150);
-            throw new Error(`Gagal memproses respons server (HTTP ${response.status}): ${cleanErr || 'Respons server kosong atau bukan JSON yang valid.'}`);
           }
-        }
+        };
 
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || 'Gagal membedah dokumen dengan AI.');
-        }
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 500) {
+            resolve(xhr.responseText);
+          } else if (xhr.status === 413) {
+            reject(new Error('Ukuran berkas melebihi batas muatan server (Payload Too Large). Silakan gunakan naskah berukuran lebih kecil atau tempel teks naskah.'));
+          } else {
+            reject(new Error(`Gagal memproses berkas (HTTP ${xhr.status}): ${xhr.statusText}`));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Terjadi gangguan jaringan saat mengunggah berkas ke server. Pastikan koneksi internet Anda aktif dan coba lagi.'));
+        xhr.send(formData);
+      });
+
+      try {
+        const cleanText = (rawText || '').trim().replace(/^\uFEFF/, '');
+        result = JSON.parse(cleanText);
+      } catch {
+        const cleanErr = (rawText || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 150);
+        throw new Error(`Gagal memproses respons server AI: ${cleanErr || 'Respons server kosong atau tidak valid.'}`);
+      }
+
+      if (!result.success) {
+        throw new Error(result.error || 'Gagal membedah dokumen dengan AI.');
       }
 
       if (!result?.data) {

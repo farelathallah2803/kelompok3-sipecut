@@ -88,7 +88,7 @@ export default function RegulationsCatalogPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-5 pb-12">
+    <div className="w-full space-y-6 pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
         <div>

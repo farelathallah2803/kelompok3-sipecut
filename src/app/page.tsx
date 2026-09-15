@@ -55,6 +55,7 @@ export default function DashboardPage() {
   const inReviewCount = drafts.filter(d => d.status === 'in_review').length;
   const approvedCount = drafts.filter(d => d.status === 'approved' || d.currentStage === 'ditetapkan' || d.currentStage === 'juknis_publikasi_dhk').length;
   const needRevisionCount = drafts.filter(d => d.status === 'revision_requested' || (d.complianceSummary && d.complianceSummary.conflictCount > 0)).length;
+  const rejectedCount = drafts.filter(d => d.status === 'rejected').length;
 
   const internalCount = drafts.filter(d => (d.scope || '').toUpperCase() === 'INTERNAL').length;
   const eksternalCount = drafts.filter(d => (d.scope || '').toUpperCase() === 'EKSTERNAL').length;
@@ -75,7 +76,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="w-full space-y-6">
       {/* Clean Executive Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
         <div>
@@ -107,25 +108,30 @@ export default function DashboardPage() {
       </div>
 
       {/* Clean Stat Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-xs font-semibold text-slate-500">Total Berkas Juknis</div>
           <div className="text-2xl font-black text-slate-900 mt-1">{totalCount}</div>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
-          <div className="text-xs font-semibold text-blue-600">Sedang Ditelaah</div>
+          <div className="text-xs font-semibold text-blue-600">Dalam Review</div>
           <div className="text-2xl font-black text-blue-900 mt-1">{inReviewCount}</div>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+          <div className="text-xs font-semibold text-amber-600">Perlu Revisi</div>
+          <div className="text-2xl font-black text-amber-900 mt-1">{needRevisionCount}</div>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+          <div className="text-xs font-semibold text-rose-600">Ditolak</div>
+          <div className="text-2xl font-black text-rose-900 mt-1">{rejectedCount}</div>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-xs font-semibold text-emerald-600">Resmi Ditetapkan</div>
           <div className="text-2xl font-black text-emerald-900 mt-1">{approvedCount}</div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
-          <div className="text-xs font-semibold text-amber-600">Perlu Penyesuaian</div>
-          <div className="text-2xl font-black text-amber-900 mt-1">{needRevisionCount}</div>
         </div>
       </div>
 
@@ -187,8 +193,9 @@ export default function DashboardPage() {
             >
               <option value="all">Semua Status</option>
               <option value="in_review">Dalam Review</option>
-              <option value="approved">Ditetapkan</option>
               <option value="revision_requested">Perlu Revisi</option>
+              <option value="rejected">Ditolak</option>
+              <option value="approved">Resmi Ditetapkan</option>
               <option value="draft">Draft Awal</option>
             </select>
           </div>
@@ -290,7 +297,13 @@ export default function DashboardPage() {
                             <span>Perlu Revisi</span>
                           </span>
                         )}
-                        {draft.status === 'draft' && (
+                        {draft.status === 'rejected' && (
+                          <span className="inline-flex items-center w-28 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-600 mr-1.5 shrink-0"></span>
+                            <span>Ditolak</span>
+                          </span>
+                        )}
+                        {(draft.status === 'draft' || (!['approved', 'in_review', 'revision_requested', 'rejected'].includes(draft.status))) && (
                           <span className="inline-flex items-center w-28 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5 shrink-0"></span>
                             <span>Draft Awal</span>

@@ -62,16 +62,9 @@ function SearchContent() {
   });
 
   return (
-    <div className="max-w-5xl mx-auto space-y-5">
-      {/* Back button & Page Title */}
-      <div className="space-y-1">
-        <Link
-          href="/"
-          className="inline-flex items-center space-x-1 text-xs text-slate-500 hover:text-blue-600 transition mb-1"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Kembali ke Dashboard</span>
-        </Link>
+    <div className="w-full space-y-6">
+      {/* Page Title */}
+      <div className="space-y-0.5">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
           Pencarian Regulasi &amp; Pasal BI
         </h1>

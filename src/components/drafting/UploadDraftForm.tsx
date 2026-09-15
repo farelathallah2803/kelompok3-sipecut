@@ -627,17 +627,10 @@ export default function UploadDraftForm() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       {/* Top Header */}
       <div className="flex items-center justify-between pb-2 border-b border-slate-200">
         <div>
-          <Link
-            href="/"
-            className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-500 hover:text-blue-700 transition mb-1"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Kembali ke Monitoring</span>
-          </Link>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Pengajuan Naskah Petunjuk Teknis
           </h1>

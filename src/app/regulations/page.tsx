@@ -20,7 +20,6 @@ import {
   Clock,
   Loader2,
   XCircle,
-  Send,
   ThumbsUp,
   ThumbsDown,
   History,
@@ -28,7 +27,7 @@ import {
 import { MOCK_REGULATIONS } from '@/data/mockRegulations';
 import { getDefaultHierarchyId } from '@/lib/hierarchy';
 import {
-  listDocuments, reprocessDocument, submitDocument, approveDocument, rejectDocument,
+  listDocuments, reprocessDocument, approveDocument, rejectDocument,
   ProjectDocument,
 } from '@/lib/documentsApi';
 import { usePollDocumentStatus } from '@/hooks/usePollDocumentStatus';
@@ -102,15 +101,6 @@ function DocumentRow({ doc, onChange }: { doc: ProjectDocument; onChange: (d: Pr
                 className="text-[11px] font-semibold text-blue-700 hover:text-blue-900 flex items-center gap-1 disabled:opacity-50"
               >
                 <RefreshCw className="w-3 h-3" /> Proses Ulang
-              </button>
-            )}
-            {doc.status === 'ready' && (
-              <button
-                disabled={busy}
-                onClick={() => runAction(() => submitDocument(doc.id))}
-                className="text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-md px-2 py-1 flex items-center gap-1 disabled:opacity-50"
-              >
-                <Send className="w-3 h-3" /> Ajukan Approval
               </button>
             )}
             {isInApproval && (

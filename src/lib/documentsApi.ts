@@ -73,16 +73,6 @@ export async function reprocessDocument(id: number): Promise<ProjectDocument> {
   return res.json();
 }
 
-/** Ajukan dokumen `ready` ke alur persetujuan 5 tahap. */
-export async function submitDocument(id: number): Promise<ProjectDocument> {
-  const res = await authFetch(`/documents/${id}/submit/`, { method: 'POST' });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || 'Gagal mengajukan dokumen ke approval.');
-  }
-  return res.json();
-}
-
 /** Mock approval — tidak ada pengecekan role/IAM, siapa pun dapat menyetujui tahap saat ini. */
 export async function approveDocument(id: number, notes?: string): Promise<ProjectDocument> {
   const res = await authFetch(`/documents/${id}/approve/`, {

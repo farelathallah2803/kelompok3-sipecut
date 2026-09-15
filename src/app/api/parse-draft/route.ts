@@ -260,8 +260,8 @@ export async function POST(req: Request) {
     const url = new URL(req.url);
     const action = url.searchParams.get('action');
 
-    // 1. ACTION: Create Upload Session for direct-to-Google large file uploads (Kapasitas hingga 2 GB tanpa batas serverless Vercel)
-    if (action === 'create-upload-session') {
+    // 1. ACTION: Inisiasi Sesi Upload Berkas Besar (Chunked Proxy)
+    if (action === 'init-chunk-upload' || action === 'create-upload-session') {
       let reqBody: any = {};
       try {
         const text = await req.text();
@@ -286,13 +286,13 @@ export async function POST(req: Request) {
           'X-Goog-Upload-Header-Content-Type': mimeType,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ file: { display_name: fileName } })
+        body: JSON.stringify({ file: { display_name: fileName.slice(0, 100) } })
       });
 
       if (!sessionRes.ok) {
         const errText = await sessionRes.text();
         return NextResponse.json(
-          { error: `Gagal membuat sesi unggah berkas ke Google Files (HTTP ${sessionRes.status}): ${errText.slice(0, 200)}` },
+          { error: `Gagal inisialisasi sesi Google Files (HTTP ${sessionRes.status}): ${errText.slice(0, 200)}` },
           { status: sessionRes.status }
         );
       }
@@ -308,6 +308,74 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         uploadUrl
+      });
+    }
+
+    // 2. ACTION: Upload Chunk Berkas ke Google Files API via Server Proxy (Memotong Batasan 4.5MB Vercel)
+    if (action === 'upload-chunk') {
+      const formData = await req.formData();
+      const uploadUrl = formData.get('uploadUrl') as string;
+      const offset = (formData.get('offset') as string) || '0';
+      const isFinal = (formData.get('isFinal') as string) === 'true';
+      const chunkFile = formData.get('chunk') as File | null;
+
+      if (!uploadUrl || !chunkFile) {
+        return NextResponse.json(
+          { error: 'Parameter uploadUrl atau data chunk tidak valid.' },
+          { status: 400 }
+        );
+      }
+
+      const arrayBuffer = await chunkFile.arrayBuffer();
+      const chunkBuffer = Buffer.from(arrayBuffer);
+
+      const chunkRes = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Length': chunkBuffer.length.toString(),
+          'X-Goog-Upload-Offset': offset,
+          'X-Goog-Upload-Command': isFinal ? 'upload, finalize' : 'upload'
+        },
+        body: new Uint8Array(chunkBuffer)
+      });
+
+      if (!chunkRes.ok) {
+        const errText = await chunkRes.text();
+        return NextResponse.json(
+          { error: `Gagal mengunggah chunk ke Google Files (HTTP ${chunkRes.status}): ${errText.slice(0, 200)}` },
+          { status: chunkRes.status }
+        );
+      }
+
+      if (isFinal) {
+        const resText = await chunkRes.text();
+        let fileInfo: any;
+        try {
+          fileInfo = JSON.parse(resText.trim().replace(/^\uFEFF/, ''));
+        } catch {
+          return NextResponse.json(
+            { error: `Google Files API mengembalikan respons bukan JSON (${chunkRes.status}): ${resText.slice(0, 150)}` },
+            { status: 500 }
+          );
+        }
+
+        if (!fileInfo?.file?.uri) {
+          return NextResponse.json(
+            { error: 'Google Files API tidak mengembalikan URI berkas aktif.' },
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          isFinal: true,
+          fileUri: fileInfo.file.uri
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        isFinal: false
       });
     }
 

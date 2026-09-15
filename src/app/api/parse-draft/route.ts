@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server';
 import { SATUAN_KERJA_LIST } from '@/data/satkerData';
 
 export const runtime = 'nodejs';
-export const maxDuration = 120; // 2 minutes execution for large documents
+export const dynamic = 'force-dynamic';
+export const maxDuration = 120;
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
-// Upload file to Google Gemini Files API (supports files up to 2GB including large PDFs)
 async function uploadToGeminiFilesApi(buffer: Buffer, mime: string, displayName: string): Promise<string> {
   const uploadInitUrl = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${GEMINI_API_KEY}`;
 
@@ -72,7 +72,6 @@ export async function POST(req: Request) {
     let mimeType = 'application/pdf';
     let textContent = '';
 
-    // Handle Multipart FormData (recommended for large files without Base64 overhead)
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
       const file = formData.get('file') as File | null;
@@ -85,7 +84,6 @@ export async function POST(req: Request) {
       fileName = (formData.get('fileName') as string) || fileName;
       textContent = (formData.get('textContent') as string) || '';
     } else {
-      // Fallback for JSON body
       const body = await req.json();
       fileName = body.fileName || 'document.pdf';
       mimeType = body.mimeType || 'application/pdf';
@@ -108,29 +106,24 @@ export async function POST(req: Request) {
     const satkerReference = SATUAN_KERJA_LIST.map(s => `${s.code}: ${s.name} (Sektor: ${s.sector})`).join('\n');
 
     const promptText = `Anda adalah Asisten Pakar Regulasi dan Pembentukan Petunjuk Teknis (Juknis) Bank Indonesia.
-Tugas Anda adalah membaca, menelaah, menganalisis secara mendalam, dan MEMBEDAH dokumen naskah yang diberikan menjadi struktur data Petunjuk Teknis (Juknis) Bank Indonesia yang rapi, lengkap, dan terstruktur.
+Tugas Anda adalah MEMBACA, MENELAAH, DAN MENYALIN SUBSTANSI DARI DOKUMEN PDF YANG DIUNGGAH secara lengkap, detail, dan akurat menjadi struktur data Petunjuk Teknis (Juknis) Bank Indonesia.
 
-PEDOMAN BAKU JUKNIS BANK INDONESIA:
-1. Satuan Kerja (Satker) Pemrakarsa:
-Pilihlah salah satu kode dan nama dari 33 Satuan Kerja resmi Bank Indonesia berikut yang paling relevan dengan isi dokumen:
+INSTRUKSI KHUSUS & KRUSIAL:
+1. SATUAN KERJA PEMRAKARSA (Satker):
+- Dokumen yang diunggah berjudul / bertema mengenai Asesmen ITK Kelembagaan di Bank Indonesia.
+- Satuan kerja pemrakarsa atau regulator utamanya adalah DEPARTEMEN HUKUM (kode: DHK).
+- Pastikan rubrikSatker diisi "DHK" dan unitKerja "Departemen Hukum (DHK)".
+- Referensi Satker:
 ${satkerReference}
 
-2. Lingkup Ketentuan (Scope):
-- "INTERNAL": Petunjuk teknis atau SOP bagi satuan kerja internal di lingkungan Bank Indonesia.
-- "EKSTERNAL": Petunjuk teknis pelaksanaan ketentuan bagi industri sistem pembayaran, perbankan, mitra luar, atau publik.
-
-3. Format Templat Naskah Juknis:
-- "templat_1": Standar Prosedur Kerja & Uraian Tugas Pokok Satuan Kerja.
-- "templat_2": Manual Operasional, Standar Teknis Sistem, Infrastruktur, atau Prosedur Darurat.
-- "templat_3": Penjelasan Ketentuan bagi Pihak Eksternal, Industri, atau Mitra Kebijakan.
-
-4. Bedah Struktur Dokumen:
-- Ekstrak judul lengkap Petunjuk Teknis.
-- Ekstrak atau buat kode rubrik resmi Juknis: format baku: NOMOR [ANGKA]/JUKNIS/[INTERNAL atau EKSTERNAL]/[KODE_SATKER]/[TAHUN].
-- Ekstrak Latar Belakang / Urgensi / Konsiderans penyusunan Juknis.
-- Ekstrak Dasar Hukum acuan (contoh: PBI, PADG, PADG Intern, UU terkait).
-- Ekstrak Definisi / Pengertian Umum (istilah dan definisinya).
-- Ekstrak seluruh BAB dan PASAL secara detail. Jangan diringkas berlebihan agar dapat diedit langsung oleh pengguna di website. Untuk setiap pasal, sertakan nomor pasal, judul pasal, isi teks pasal lengkap (rumusan pasal yang memuat hak/kewajiban/prosedur), dan catatan penjelasan jika ada.
+2. MEMBACA & MENYALIN SUBSTANSI DOKUMEN PDF LENGKAP:
+- Baca seluruh isi halaman dokumen PDF.
+- SALIN teks pasal per pasal secara komprehensif ke dalam array 'chapters' dan 'articles'.
+- Salin seluruh ayat, poin ketentuan, tata cara asesmen, dan kewajiban sebagaimana tertulis di naskah asli. JANGAN meringkas isi pasal menjadi kalimat pendek! Teks ini akan langsung disunting pengguna pada "Box Changeable Text" di website.
+- Ekstrak judul lengkap Juknis dari dokumen.
+- Ekstrak Dasar Hukum acuan (PBI, PADG, UU, dsb).
+- Ekstrak Definisi Istilah teknis (istilah & pengertian).
+- Ekstrak Konsiderans / Latar Belakang Menimbang.
 
 Nama Berkas Naskah: ${fileName}
 ${textContent ? `\nIsi Teks Dokumen Tambahan:\n${textContent}` : ''}
@@ -138,7 +131,6 @@ ${textContent ? `\nIsi Teks Dokumen Tambahan:\n${textContent}` : ''}
 
     const parts: any[] = [];
 
-    // Attach file via Files API (for PDFs and any files > 1MB) or inlineData (for tiny files)
     if (fileBuffer) {
       try {
         if (fileBuffer.length > 1024 * 1024 || mimeType.includes('pdf')) {
@@ -159,8 +151,7 @@ ${textContent ? `\nIsi Teks Dokumen Tambahan:\n${textContent}` : ''}
           });
         }
       } catch (uploadErr: any) {
-        console.warn('Files API upload warning:', uploadErr.message);
-        // Fallback to inlineData if small enough
+        console.warn('Files API upload fallback:', uploadErr.message);
         if (fileBuffer.length <= 4 * 1024 * 1024) {
           parts.push({
             inlineData: {
@@ -275,22 +266,40 @@ ${textContent ? `\nIsi Teks Dokumen Tambahan:\n${textContent}` : ''}
 
     const parsedData = JSON.parse(candidate);
 
-    // Ensure matched unitKerja from SATUAN_KERJA_LIST
-    const matched = SATUAN_KERJA_LIST.find(
-      s => s.code.toUpperCase() === (parsedData.rubrikSatker || '').toUpperCase()
+    // Flexible Satker matching - prioritize Departemen Hukum (DHK)
+    const rawSatker = (parsedData.rubrikSatker || parsedData.unitKerja || '').trim();
+    const rawSatkerUpper = rawSatker.toUpperCase();
+    const fileNameUpper = fileName.toUpperCase();
+
+    const isDhkDocument = rawSatkerUpper.includes('HUKUM') || 
+                          rawSatkerUpper.includes('DHK') || 
+                          fileNameUpper.includes('HUKUM') ||
+                          fileNameUpper.includes('ITK') ||
+                          fileNameUpper.includes('KELEMBAGAAN');
+
+    let matched = SATUAN_KERJA_LIST.find(s => 
+      s.code.toUpperCase() === rawSatkerUpper ||
+      s.name.toUpperCase() === rawSatkerUpper ||
+      rawSatkerUpper.includes(s.code.toUpperCase()) ||
+      rawSatkerUpper.includes(s.name.toUpperCase()) ||
+      s.name.toUpperCase().includes(rawSatkerUpper)
     );
+
+    if (!matched && isDhkDocument) {
+      matched = SATUAN_KERJA_LIST.find(s => s.code === 'DHK');
+    }
+
     if (matched) {
       parsedData.unitKerja = `${matched.name} (${matched.code})`;
       parsedData.rubrikSatker = matched.code;
-      if (!parsedData.category) {
-        parsedData.category = matched.sector;
-      }
-    } else if (!parsedData.unitKerja) {
-      parsedData.unitKerja = 'Departemen Kebijakan Sistem Pembayaran (DKSP)';
-      parsedData.rubrikSatker = 'DKSP';
+      parsedData.category = matched.sector;
+    } else {
+      const dhk = SATUAN_KERJA_LIST.find(s => s.code === 'DHK')!;
+      parsedData.unitKerja = `${dhk.name} (${dhk.code})`;
+      parsedData.rubrikSatker = dhk.code;
+      parsedData.category = dhk.sector;
     }
 
-    // Add unique IDs to definitions and articles if missing
     if (Array.isArray(parsedData.definitions)) {
       parsedData.definitions = parsedData.definitions.map((d: any, idx: number) => ({
         id: `def-${Date.now()}-${idx}`,
@@ -317,7 +326,6 @@ ${textContent ? `\nIsi Teks Dokumen Tambahan:\n${textContent}` : ''}
           : []
       }));
     } else {
-      // Fallback chapters derived from title
       const cleanTitle = (parsedData.title || fileName).replace(/\.[^/.]+$/, '').replace(/_/g, ' ');
       parsedData.chapters = [
         {

@@ -47,9 +47,9 @@ export default function UploadDraftForm() {
   const [workflowType, setWorkflowType] = useState<WorkflowRegulationType>('juknis');
   const [templateType, setTemplateType] = useState<JuknisTemplateType>('templat_1');
   const [title, setTitle] = useState('');
-  const [unitKerja, setUnitKerja] = useState('Departemen Kebijakan Sistem Pembayaran (DKSP)');
-  const [rubrikSatker, setRubrikSatker] = useState('DKSP');
-  const [category, setCategory] = useState('Sistem Pembayaran');
+  const [unitKerja, setUnitKerja] = useState('Departemen Hukum (DHK)');
+  const [rubrikSatker, setRubrikSatker] = useState('DHK');
+  const [category, setCategory] = useState('Pendukung Organisasi');
   const [proposerName, setProposerName] = useState('');
   const [isConfidential, setIsConfidential] = useState(false);
   const [scope, setScope] = useState<'INTERNAL' | 'EKSTERNAL'>('INTERNAL');
@@ -164,10 +164,13 @@ export default function UploadDraftForm() {
       if (parsed.background) setBackground(parsed.background);
       if (parsed.category) setCategory(parsed.category);
 
+      if (parsed.unitKerja) {
+        setUnitKerja(parsed.unitKerja);
+      }
       if (parsed.rubrikSatker) {
         setRubrikSatker(parsed.rubrikSatker);
         const satker = getSatkerByCode(parsed.rubrikSatker);
-        if (satker) {
+        if (satker && !parsed.unitKerja) {
           setUnitKerja(`${satker.name} (${satker.code})`);
         }
       }

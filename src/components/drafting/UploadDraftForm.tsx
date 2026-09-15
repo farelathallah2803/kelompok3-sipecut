@@ -134,7 +134,7 @@ export default function UploadDraftForm() {
 
     try {
       let result: any;
-      const CHUNK_SIZE = 2 * 1024 * 1024; // 2 MB per chunk (aman dari batas 4.5MB Vercel Serverless)
+      const CHUNK_SIZE = 1 * 1024 * 1024; // 1 MB per chunk (pasti aman 100% dari batas payload Vercel Serverless)
 
       if (file.size > CHUNK_SIZE) {
         // 1. Inisiasi sesi upload chunk di Google Files API via server proxy

@@ -133,7 +133,7 @@ export default function ApprovalModal({
   );
 
   const determineNextStep = (): { nextStage: WorkflowStage; nextStatus: WorkflowStatus } => {
-    return determineNextWorkflowStep(workflowType, draft.currentStage, decision);
+    return determineNextWorkflowStep(workflowType, draft.currentStage, decision, draft, activeRole);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -418,6 +418,51 @@ export default function ApprovalModal({
               </span>
             </div>
           </div>
+
+          {/* Reviu Teknis 3 Satker Status Banner */}
+          {draft.currentStage === 'juknis_reviu_teknis' && (() => {
+            const notesForStage = draft.reviewNotes || [];
+            let lastRevisionIdx = -1;
+            for (let i = notesForStage.length - 1; i >= 0; i--) {
+              if (notesForStage[i].stage === 'juknis_reviu_teknis' && notesForStage[i].decision === 'request_revision') {
+                lastRevisionIdx = i;
+                break;
+              }
+            }
+            const relevantNotes = lastRevisionIdx >= 0 ? notesForStage.slice(lastRevisionIdx + 1) : notesForStage;
+            const approvedRoles = new Set(
+              relevantNotes
+                .filter(n => n.stage === 'juknis_reviu_teknis' && n.decision === 'approve')
+                .map(n => n.reviewerRole)
+            );
+            return (
+              <div className="bg-amber-50/90 border border-amber-200/90 p-3 rounded-xl space-y-2">
+                <div className="flex items-center justify-between text-amber-950 font-bold text-xs">
+                  <span className="flex items-center space-x-1.5">
+                    <ShieldAlert className="w-4 h-4 text-amber-600" />
+                    <span>Status Persetujuan Reviu Teknis Bersama (Wajib 3 Satker)</span>
+                  </span>
+                  <span className="font-mono bg-amber-100 text-amber-900 text-[11px] px-2 py-0.5 rounded-full font-bold">
+                    {approvedRoles.size} / 3 Satker Disetujui
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
+                  <div className={`p-2 rounded-lg border ${approvedRoles.has('dhuk_legal') ? 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold' : activeRole === 'dhuk_legal' ? 'bg-amber-200 text-amber-950 border-amber-400 font-bold ring-2 ring-amber-400/50' : 'bg-white text-slate-500 border-slate-200'}`}>
+                    {approvedRoles.has('dhuk_legal') ? '✓ DHk (Hukum)' : activeRole === 'dhuk_legal' ? '✍️ DHk (Akun Anda)' : '⏳ DHk (Hukum)'}
+                  </div>
+                  <div className={`p-2 rounded-lg border ${approvedRoles.has('dmr_reviewer') ? 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold' : activeRole === 'dmr_reviewer' ? 'bg-amber-200 text-amber-950 border-amber-400 font-bold ring-2 ring-amber-400/50' : 'bg-white text-slate-500 border-slate-200'}`}>
+                    {approvedRoles.has('dmr_reviewer') ? '✓ DMR (Risiko)' : activeRole === 'dmr_reviewer' ? '✍️ DMR (Akun Anda)' : '⏳ DMR (Risiko)'}
+                  </div>
+                  <div className={`p-2 rounded-lg border ${approvedRoles.has('dai_auditor') ? 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold' : activeRole === 'dai_auditor' ? 'bg-amber-200 text-amber-950 border-amber-400 font-bold ring-2 ring-amber-400/50' : 'bg-white text-slate-500 border-slate-200'}`}>
+                    {approvedRoles.has('dai_auditor') ? '✓ DAI (Audit)' : activeRole === 'dai_auditor' ? '✍️ DAI (Akun Anda)' : '⏳ DAI (Audit)'}
+                  </div>
+                </div>
+                <p className="text-[10px] text-amber-800 italic">
+                  * Naskah juknis baru akan otomatis lanjut ke Tahap 3 (Evaluasi Tata Kelola DMST) setelah ketiga Satker (DHk, DMR, DAI) menyetujui.
+                </p>
+              </div>
+            );
+          })()}
 
           {/* Decision Selection Cards */}
           <div>

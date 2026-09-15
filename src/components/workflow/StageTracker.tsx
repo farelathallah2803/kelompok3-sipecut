@@ -370,6 +370,48 @@ export default function StageTracker({
         </div>
       </div>
 
+      {/* Multi-Satker Reviu Teknis Progress Banner */}
+      {currentStage === 'juknis_reviu_teknis' && status !== 'approved' && (() => {
+        let lastRevisionIdx = -1;
+        for (let i = reviewNotes.length - 1; i >= 0; i--) {
+          if (reviewNotes[i].stage === 'juknis_reviu_teknis' && reviewNotes[i].decision === 'request_revision') {
+            lastRevisionIdx = i;
+            break;
+          }
+        }
+        const relevantNotes = lastRevisionIdx >= 0 ? reviewNotes.slice(lastRevisionIdx + 1) : reviewNotes;
+        const approvedRoles = new Set(
+          relevantNotes
+            .filter(n => n.stage === 'juknis_reviu_teknis' && n.decision === 'approve')
+            .map(n => n.reviewerRole)
+        );
+
+        return (
+          <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-3 text-xs text-amber-950 space-y-2">
+            <div className="font-bold flex items-center justify-between text-xs">
+              <span className="flex items-center space-x-1.5">
+                <ShieldAlert className="w-4 h-4 text-amber-600" />
+                <span>Status Persetujuan Reviu Teknis Bersama (Wajib 3 Satker)</span>
+              </span>
+              <span className="font-mono bg-amber-100 text-amber-900 text-[11px] px-2 py-0.5 rounded-full font-bold">
+                {approvedRoles.size} / 3 Satker Disetujui
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
+              <div className={`py-1.5 px-2 rounded-lg font-medium border text-[11px] transition ${approvedRoles.has('dhuk_legal') ? 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold' : 'bg-white text-slate-500 border-slate-200'}`}>
+                {approvedRoles.has('dhuk_legal') ? '✓ DHk (Hukum)' : '⏳ DHk (Hukum)'}
+              </div>
+              <div className={`py-1.5 px-2 rounded-lg font-medium border text-[11px] transition ${approvedRoles.has('dmr_reviewer') ? 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold' : 'bg-white text-slate-500 border-slate-200'}`}>
+                {approvedRoles.has('dmr_reviewer') ? '✓ DMR (Risiko)' : '⏳ DMR (Risiko)'}
+              </div>
+              <div className={`py-1.5 px-2 rounded-lg font-medium border text-[11px] transition ${approvedRoles.has('dai_auditor') ? 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold' : 'bg-white text-slate-500 border-slate-200'}`}>
+                {approvedRoles.has('dai_auditor') ? '✓ DAI (Audit)' : '⏳ DAI (Audit)'}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Review Notes History Toggle */}
       {reviewNotes.length > 0 && (
         <div className="pt-2 border-t border-slate-100">

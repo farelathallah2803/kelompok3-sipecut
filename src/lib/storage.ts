@@ -63,7 +63,9 @@ export function getWorkflowStages(workflowType: WorkflowRegulationType): Workflo
 export function determineNextWorkflowStep(
   workflowType: WorkflowRegulationType,
   currentStage: WorkflowStage,
-  decision: 'approve' | 'request_revision' | 'reject'
+  decision: 'approve' | 'request_revision' | 'reject',
+  draft?: PetunjukTeknisDraft,
+  activeRole?: UserRole
 ): { nextStage: WorkflowStage; nextStatus: WorkflowStatus } {
   if (decision === 'reject') {
     return { nextStage: currentStage, nextStatus: 'rejected' };
@@ -82,6 +84,36 @@ export function determineNextWorkflowStep(
   if (currentStage === 'dmr') return { nextStage: 'dai', nextStatus: 'in_review' };
   if (currentStage === 'dai') return { nextStage: 'dhuk', nextStatus: 'in_review' };
   if (currentStage === 'dhuk') return { nextStage: 'ditetapkan', nextStatus: 'approved' };
+
+  // Khusus Tahap 2 Juknis: Reviu Teknis Bersama (membutuhkan persetujuan 3 Satker: DHk, DMR, DAI)
+  if (workflowType === 'juknis' && currentStage === 'juknis_reviu_teknis' && decision === 'approve') {
+    if (draft) {
+      const REQUIRED_ROLES: UserRole[] = ['dhuk_legal', 'dmr_reviewer', 'dai_auditor'];
+      const notesForStage = draft.reviewNotes || [];
+      let lastRevisionIdx = -1;
+      for (let i = notesForStage.length - 1; i >= 0; i--) {
+        if (notesForStage[i].stage === 'juknis_reviu_teknis' && notesForStage[i].decision === 'request_revision') {
+          lastRevisionIdx = i;
+          break;
+        }
+      }
+      const relevantNotes = lastRevisionIdx >= 0 ? notesForStage.slice(lastRevisionIdx + 1) : notesForStage;
+      const approvedRoles = new Set(
+        relevantNotes
+          .filter(n => n.stage === 'juknis_reviu_teknis' && n.decision === 'approve')
+          .map(n => n.reviewerRole)
+      );
+      if (activeRole) {
+        approvedRoles.add(activeRole);
+      }
+      const allApproved = REQUIRED_ROLES.every(role => approvedRoles.has(role));
+      if (!allApproved) {
+        return { nextStage: 'juknis_reviu_teknis', nextStatus: 'in_review' };
+      }
+    } else {
+      return { nextStage: 'juknis_reviu_teknis', nextStatus: 'in_review' };
+    }
+  }
 
   // Khusus Alur Juknis dengan auto-approval RDG & ADG (Simulasi Prototype)
   if (workflowType === 'juknis' && decision === 'approve') {
@@ -117,10 +149,11 @@ export function determineNextWorkflowStep(
 export function canRoleActOnStage(
   stage: WorkflowStage, 
   role: UserRole, 
-  workflowType?: WorkflowRegulationType
+  workflowType?: WorkflowRegulationType,
+  draft?: PetunjukTeknisDraft
 ): boolean {
   switch (stage) {
-    // 1. Alur PBI: Legal Review => Harmonisasi Kemenkum & Kemenkeu => Legal Closing => Finalisasi => TTD Gub => DHk Publish
+    // 1. Alur PBI
     case 'pbi_legal_review':
       return role === 'dhuk_legal';
     case 'pbi_harmonisasi':
@@ -134,7 +167,7 @@ export function canRoleActOnStage(
     case 'pbi_publish':
       return role === 'dhuk_legal';
 
-    // 2. Alur PADG: Legal Review => Legal Closing => Finalisasi => TTD Gub => DHk Publish (Skip Harmonisasi)
+    // 2. Alur PADG
     case 'padg_legal_review':
       return role === 'dhuk_legal';
     case 'padg_legal_closing':
@@ -149,10 +182,37 @@ export function canRoleActOnStage(
     // 3. Alur Perubahan Peraturan / Juknis: Satker Pemrakarsa => Reviu Teknis (DHk, DMR, DAI) => Evaluasi DMST => Pembahasan RDG => Persetujuan ADG => Publikasi DHk
     case 'juknis_penyusunan':
       return role === 'drafter' || role === 'pimpinan_satker';
-    case 'juknis_reviu_teknis':
-      return role === 'dhuk_legal' || role === 'dmr_reviewer' || role === 'dai_auditor';
+    case 'juknis_reviu_teknis': {
+      if (role !== 'dhuk_legal' && role !== 'dmr_reviewer' && role !== 'dai_auditor') {
+        return false;
+      }
+      if (draft) {
+        const notesForStage = draft.reviewNotes || [];
+        let lastRevisionIdx = -1;
+        for (let i = notesForStage.length - 1; i >= 0; i--) {
+          if (notesForStage[i].stage === 'juknis_reviu_teknis' && notesForStage[i].decision === 'request_revision') {
+            lastRevisionIdx = i;
+            break;
+          }
+        }
+        const relevantNotes = lastRevisionIdx >= 0 ? notesForStage.slice(lastRevisionIdx + 1) : notesForStage;
+        const hasApproved = relevantNotes.some(
+          n => n.stage === 'juknis_reviu_teknis' && n.reviewerRole === role && n.decision === 'approve'
+        );
+        if (hasApproved) {
+          return false; // Akun/Peran ini telah menyetujui, tidak perlu mereviu ulang
+        }
+      }
+      return true;
+    }
     case 'juknis_evaluasi_dmst':
       return role === 'dmst_governance';
+    case 'juknis_pembahasan_rdg':
+      return role === 'sekretariat_rdg' || role === 'dmst_governance' || role === 'dhuk_legal';
+    case 'juknis_persetujuan_adg':
+      return role === 'adg_pembina' || role === 'dmst_governance' || role === 'dhuk_legal';
+    case 'juknis_publikasi_dhk':
+      return role === 'dhuk_legal';
     case 'juknis_pembahasan_rdg':
       return role === 'sekretariat_rdg' || role === 'dmst_governance' || role === 'dhuk_legal';
     case 'juknis_persetujuan_adg':
@@ -260,24 +320,75 @@ export function updateDraftWorkflow(
   const draft = drafts.find(d => d.id === draftId);
   if (!draft) return null;
 
-  draft.currentStage = newStage;
-  draft.status = newStatus;
-  draft.updatedAt = new Date().toISOString();
+  const currentStageBeforeUpdate = draft.currentStage;
 
   draft.reviewNotes = draft.reviewNotes || [];
   draft.reviewNotes.push(reviewNote);
+
+  let finalNextStage = newStage;
+  let finalNextStatus = newStatus;
+
+  // Enforce Multi-Satker Joint Review for Tahap 2: juknis_reviu_teknis
+  if (currentStageBeforeUpdate === 'juknis_reviu_teknis') {
+    if (reviewNote.decision === 'reject') {
+      finalNextStage = 'juknis_reviu_teknis';
+      finalNextStatus = 'rejected';
+    } else if (reviewNote.decision === 'request_revision') {
+      finalNextStage = 'juknis_penyusunan';
+      finalNextStatus = 'revision_requested';
+    } else if (reviewNote.decision === 'approve') {
+      const REQUIRED_ROLES: UserRole[] = ['dhuk_legal', 'dmr_reviewer', 'dai_auditor'];
+      const notesForStage = draft.reviewNotes;
+      let lastRevisionIdx = -1;
+      for (let i = notesForStage.length - 1; i >= 0; i--) {
+        if (notesForStage[i].stage === 'juknis_reviu_teknis' && notesForStage[i].decision === 'request_revision') {
+          lastRevisionIdx = i;
+          break;
+        }
+      }
+      const relevantNotes = lastRevisionIdx >= 0 ? notesForStage.slice(lastRevisionIdx + 1) : notesForStage;
+      const approvedRoles = new Set(
+        relevantNotes
+          .filter(n => n.stage === 'juknis_reviu_teknis' && n.decision === 'approve')
+          .map(n => n.reviewerRole)
+      );
+
+      const allApproved = REQUIRED_ROLES.every(role => approvedRoles.has(role));
+      if (allApproved) {
+        finalNextStage = 'juknis_evaluasi_dmst';
+        finalNextStatus = 'in_review';
+      } else {
+        finalNextStage = 'juknis_reviu_teknis';
+        finalNextStatus = 'in_review';
+      }
+    }
+  }
+
+  draft.currentStage = finalNextStage;
+  draft.status = finalNextStatus;
+  draft.updatedAt = new Date().toISOString();
+
+  let actionText = reviewNote.decision === 'approve'
+    ? `Disetujui: Lanjut ke ${getStageLabel(finalNextStage)}`
+    : reviewNote.decision === 'request_revision'
+    ? `Pengembalian: Permintaan revisi oleh ${reviewNote.department}`
+    : `Penolakan berkas oleh ${reviewNote.department}`;
+
+  if (currentStageBeforeUpdate === 'juknis_reviu_teknis' && reviewNote.decision === 'approve') {
+    if (finalNextStage === 'juknis_reviu_teknis') {
+      actionText = `Disetujui (${reviewNote.department}): Menunggu Persetujuan Satker Reviu Teknis Lainnya`;
+    } else {
+      actionText = `Disetujui Penuh: 3/3 Satker (DHk, DMR, DAI) Menyutujui -> Lanjut ke Evaluasi DMST`;
+    }
+  }
 
   const logItem: ActivityLogItem = {
     id: `log-${Date.now()}`,
     timestamp: new Date().toISOString(),
     actor: actorName,
     role: actorRole,
-    action: reviewNote.decision === 'approve'
-      ? `Disetujui: Lanjut ke ${getStageLabel(newStage)}`
-      : reviewNote.decision === 'request_revision'
-      ? `Pengembalian: Permintaan revisi oleh ${reviewNote.department}`
-      : `Penolakan berkas oleh ${reviewNote.department}`,
-    stage: newStage,
+    action: actionText,
+    stage: finalNextStage,
     details: reviewNote.notes
   };
 

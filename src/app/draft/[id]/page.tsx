@@ -121,7 +121,7 @@ export default function DraftDetailPage() {
 
   const canReviewCurrentStage = () => {
     if (draft.status === 'approved' || draft.currentStage === 'ditetapkan') return false;
-    return canRoleActOnStage(draft.currentStage, activeRole, draft.workflowType || getWorkflowType(draft));
+    return canRoleActOnStage(draft.currentStage, activeRole, draft.workflowType || getWorkflowType(draft), draft);
   };
 
   const isMatchingRole = canReviewCurrentStage();

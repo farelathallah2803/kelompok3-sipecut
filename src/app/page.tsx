@@ -14,7 +14,8 @@ import {
   Sparkles
 } from 'lucide-react';
 import { PetunjukTeknisDraft, UserRole } from '@/types';
-import { getDrafts, getActiveRole, getStageLabel, getWorkflowType } from '@/lib/storage';
+import LandingHeroSection from '@/components/landing/LandingHeroSection';
+import { getDrafts, getActiveRole, setActiveRole as updateActiveRoleInStorage, getStageLabel, getWorkflowType } from '@/lib/storage';
 import { SATUAN_KERJA_LIST } from '@/data/satkerData';
 
 export default function DashboardPage() {
@@ -25,6 +26,11 @@ export default function DashboardPage() {
   const [selectedScopeFilter, setSelectedScopeFilter] = useState<string>('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
   const [selectedSatkerFilter, setSelectedSatkerFilter] = useState<string>('auto');
+
+  const handleRoleChangeFromLanding = (newRole: UserRole) => {
+    updateActiveRoleInStorage(newRole);
+    setActiveRole(newRole);
+  };
 
   const loadData = () => {
     setDrafts(getDrafts());
@@ -154,8 +160,17 @@ export default function DashboardPage() {
 
   return (
     <div className="w-full space-y-6">
+      {/* SINAU-Style Landing Page Banner */}
+      <LandingHeroSection 
+        activeRole={activeRole} 
+        onRoleChange={handleRoleChangeFromLanding}
+        totalDraftsCount={totalCount}
+        inReviewCount={inReviewCount}
+        approvedCount={approvedCount}
+      />
+
       {/* Executive Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
+      <div id="monitoring-section" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 pt-2 border-t border-slate-200">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Monitoring &amp; Harmonisasi Juknis

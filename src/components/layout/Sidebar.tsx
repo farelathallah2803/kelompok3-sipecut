@@ -190,10 +190,10 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
       {/* Brand Header with Hide Button */}
       <div className="p-4 border-b border-slate-200">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center group min-w-0" title="PRISMA - Platform Regulasi, Integrasi, Search, Monitoring & Administration Bank Indonesia">
+          <Link href="/" className="flex items-center group min-w-0" title="IRAMA - Integrasi Regulasi dan Monitoring Aturan Bank Indonesia">
             <img 
-              src="/prisma-logo-clean.png" 
-              alt="PRISMA Bank Indonesia" 
+              src="/irama-logo.png" 
+              alt="IRAMA Bank Indonesia" 
               className="h-11 w-auto max-w-[175px] object-contain object-left group-hover:scale-105 transition origin-left"
             />
           </Link>
@@ -353,10 +353,10 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
 
       {/* Mobile Top Navigation Bar */}
       <header className="md:hidden sticky top-0 z-30 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-2xs">
-        <Link href="/" className="flex items-center" title="PRISMA Bank Indonesia">
+        <Link href="/" className="flex items-center" title="IRAMA Bank Indonesia">
           <img 
-            src="/prisma-logo-clean.png" 
-            alt="PRISMA Bank Indonesia" 
+            src="/irama-logo.png" 
+            alt="IRAMA Bank Indonesia" 
             className="h-8 w-auto max-w-[140px] object-contain object-left" 
           />
         </Link>

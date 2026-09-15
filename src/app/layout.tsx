@@ -3,12 +3,12 @@ import './globals.css';
 import AppLayout from '@/components/layout/AppLayout';
 
 export const metadata: Metadata = {
-  title: 'PRISMA Bank Indonesia | Platform Regulasi, Integrasi, Search, Monitoring & Administration',
-  description: 'PRISMA Bank Indonesia - Platform Regulasi, Integrasi, Search, Monitoring & Administration. Wadah penyusunan draft petunjuk teknis, uji komparasi regulasi, approval pimpinan, dan tracking alur persetujuan lintas departemen.',
+  title: 'IRAMA Bank Indonesia | Integrasi Regulasi dan Monitoring Aturan',
+  description: 'IRAMA Bank Indonesia - Integrasi Regulasi dan Monitoring Aturan Bank Indonesia. Wadah penyusunan draft petunjuk teknis, uji komparasi regulasi, approval pimpinan, dan tracking alur persetujuan lintas departemen.',
   icons: {
-    icon: '/prisma-icon.png',
-    shortcut: '/prisma-icon.png',
-    apple: '/prisma-icon.png',
+    icon: '/irama-logo.png',
+    shortcut: '/irama-logo.png',
+    apple: '/irama-logo.png',
   },
 };
 

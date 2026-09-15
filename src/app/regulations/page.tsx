@@ -20,26 +20,24 @@ import {
   Clock,
   Loader2,
   XCircle,
-  ThumbsUp,
-  ThumbsDown,
+  ClipboardCheck,
+  GitBranch,
   History,
 } from 'lucide-react';
 import { MOCK_REGULATIONS } from '@/data/mockRegulations';
 import { getDefaultHierarchyId } from '@/lib/hierarchy';
-import {
-  listDocuments, reprocessDocument, approveDocument, rejectDocument,
-  ProjectDocument,
-} from '@/lib/documentsApi';
+import { listDocuments, reprocessDocument, ProjectDocument } from '@/lib/documentsApi';
 import { usePollDocumentStatus } from '@/hooks/usePollDocumentStatus';
 import UploadDocumentModal from '@/components/documents/UploadDocumentModal';
+import ApprovalReviewModal from '@/components/documents/ApprovalReviewModal';
 
 const STATUS_BADGE: Record<ProjectDocument['status'], { label: string; className: string; icon: React.ElementType }> = {
   draft:              { label: 'Draft',                className: 'bg-slate-100 text-slate-600 border-slate-200',    icon: Clock },
   pending:            { label: 'Menunggu',             className: 'bg-slate-100 text-slate-600 border-slate-200',    icon: Clock },
   processing_l1:      { label: 'Ekstraksi Dokumen',    className: 'bg-blue-50 text-blue-700 border-blue-200',        icon: Loader2 },
   processing_embed:   { label: 'Membuat Embedding',    className: 'bg-blue-50 text-blue-700 border-blue-200',        icon: Loader2 },
-  ready:              { label: 'Siap Digunakan',       className: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
-  error:              { label: 'Gagal Diproses',       className: 'bg-rose-50 text-rose-700 border-rose-200',        icon: XCircle },
+  ready:              { label: 'Selesai Diproses',     className: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
+  error:              { label: 'Gagal / Ditolak',      className: 'bg-rose-50 text-rose-700 border-rose-200',        icon: XCircle },
   awaiting_judgment:  { label: 'Menunggu Induk Terbit', className: 'bg-amber-50 text-amber-700 border-amber-200',    icon: Clock },
   judgment_running:   { label: 'Penilaian AI',         className: 'bg-blue-50 text-blue-700 border-blue-200',        icon: Loader2 },
   approval_1:         { label: 'Persetujuan Kepala Unit Kerja', className: 'bg-indigo-50 text-indigo-700 border-indigo-200', icon: Clock },
@@ -52,14 +50,21 @@ const STATUS_BADGE: Record<ProjectDocument['status'], { label: string; className
 
 const APPROVAL_STAGES: ProjectDocument['status'][] = ['approval_1', 'approval_2', 'approval_3', 'approval_4'];
 
-function DocumentRow({ doc, onChange }: { doc: ProjectDocument; onChange: (d: ProjectDocument) => void }) {
+function DocumentRow({ doc, allDocuments, onChange }: {
+  doc: ProjectDocument;
+  allDocuments: ProjectDocument[];
+  onChange: (d: ProjectDocument) => void;
+}) {
   usePollDocumentStatus(doc.id, doc.status, onChange);
   const [showHistory, setShowHistory] = useState(false);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const badge = STATUS_BADGE[doc.status];
   const Icon = badge.icon;
   const isSpinning = doc.status === 'processing_l1' || doc.status === 'processing_embed' || doc.status === 'judgment_running';
   const isInApproval = APPROVAL_STAGES.includes(doc.status);
+  const amends = doc.parent_edges.filter((e) => e.relation_type === 'MENGUBAH' || e.relation_type === 'MENCABUT');
+  const isAmending = amends.length > 0 || doc.relation_flags.includes('MENGUBAH') || doc.relation_flags.includes('MENCABUT');
 
   const runAction = async (fn: () => Promise<ProjectDocument>) => {
     setBusy(true);
@@ -75,10 +80,23 @@ function DocumentRow({ doc, onChange }: { doc: ProjectDocument; onChange: (d: Pr
   return (
     <>
       <tr className="hover:bg-slate-50/60 transition">
-        <td className="py-2.5 px-3 text-xs font-semibold text-slate-800">{doc.title}</td>
+        <td className="py-2.5 px-3 text-xs">
+          <div className="font-semibold text-slate-800">{doc.title}</div>
+          {isAmending && (
+            <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+              <GitBranch className="w-3 h-3" />
+              {amends.length > 0
+                ? `${amends[0].relation_type === 'MENCABUT' ? 'Mencabut' : 'Mengubah'}: ${amends[0].title}${amends.length > 1 ? ` +${amends.length - 1}` : ''}`
+                : 'Mengubah dokumen lain'}
+            </div>
+          )}
+        </td>
         <td className="py-2.5 px-3 text-xs text-slate-500">{doc.doc_type_display}</td>
         <td className="py-2.5 px-3">
-          <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-semibold border ${badge.className}`}>
+          <span
+            className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-semibold border ${badge.className}`}
+            title={doc.error_message || undefined}
+          >
             <Icon className={`w-3 h-3 ${isSpinning ? 'animate-spin' : ''}`} />
             {badge.label}
           </span>
@@ -104,28 +122,24 @@ function DocumentRow({ doc, onChange }: { doc: ProjectDocument; onChange: (d: Pr
               </button>
             )}
             {isInApproval && (
-              <>
-                <button
-                  disabled={busy}
-                  onClick={() => runAction(() => approveDocument(doc.id))}
-                  className="text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md px-2 py-1 flex items-center gap-1 disabled:opacity-50"
-                  title="Mock approval — belum ada pengecekan role/IAM"
-                >
-                  <ThumbsUp className="w-3 h-3" /> Setujui
-                </button>
-                <button
-                  disabled={busy}
-                  onClick={() => {
-                    const reason = window.prompt('Alasan penolakan (opsional):') || '';
-                    runAction(() => rejectDocument(doc.id, reason));
-                  }}
-                  className="text-[11px] font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-md px-2 py-1 flex items-center gap-1 disabled:opacity-50"
-                >
-                  <ThumbsDown className="w-3 h-3" /> Tolak
-                </button>
-              </>
+              <button
+                onClick={() => setIsReviewOpen(true)}
+                className={`text-[11px] font-bold text-white rounded-md px-2 py-1 flex items-center gap-1 ${
+                  isAmending ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                <ClipboardCheck className="w-3 h-3" /> Tinjau &amp; Putuskan
+              </button>
             )}
           </div>
+          {isReviewOpen && (
+            <ApprovalReviewModal
+              doc={doc}
+              allDocuments={allDocuments}
+              onClose={() => setIsReviewOpen(false)}
+              onDecided={onChange}
+            />
+          )}
         </td>
       </tr>
       {showHistory && doc.approvals.length > 0 && (
@@ -205,7 +219,7 @@ function ProjectDocumentsPanel() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {documents.map((doc) => (
-                <DocumentRow key={doc.id} doc={doc} onChange={handleDocChange} />
+                <DocumentRow key={doc.id} doc={doc} allDocuments={documents} onChange={handleDocChange} />
               ))}
             </tbody>
           </table>

@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { getDocument, ProjectDocument } from '@/lib/documentsApi';
 
-const IN_PROGRESS: ProjectDocument['status'][] = ['pending', 'processing_l1', 'processing_embed'];
+const IN_PROGRESS: ProjectDocument['status'][] = ['pending', 'processing_l1', 'processing_embed', 'judgment_running'];
 
 /**
- * Polls one document's status every 3s until it reaches 'ready' or 'error'.
+ * Polls one document's status every 3s until it leaves processing / AI judgment.
  * Direct port of silebah's startPolling/stopPolling (frontend/static/js/main.js).
  */
 export function usePollDocumentStatus(

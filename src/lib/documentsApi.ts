@@ -14,6 +14,17 @@ export interface ApprovalRecord {
   decided_at: string;
 }
 
+export type RelationType = 'MENJELASKAN' | 'MENGUBAH' | 'MENCABUT';
+export type RelationFlag = 'MENGUBAH' | 'DIUBAH' | 'MENCABUT' | 'DICABUT';
+export const DOC_TYPES = ['TECHNICAL', 'PBI', 'PDG', 'PADG', 'PADGI', 'LEGAL'] as const;
+
+export interface DocumentEdge {
+  id: number;
+  title: string;
+  relation_type: RelationType;
+  is_placeholder?: boolean;
+}
+
 export interface ProjectDocument {
   id: number;
   title: string;
@@ -21,6 +32,9 @@ export interface ProjectDocument {
   is_placeholder: boolean;
   doc_type: string;
   doc_type_display: string;
+  parent_edges: DocumentEdge[];
+  child_edges: DocumentEdge[];
+  relation_flags: RelationFlag[];
   status: DocumentStatus;
   status_display: string;
   clause_count: number | null;
@@ -73,18 +87,47 @@ export async function reprocessDocument(id: number): Promise<ProjectDocument> {
   return res.json();
 }
 
+/** Koreksi opsional atas klasifikasi AI; edge list mengganti seluruh daftar (replace all). */
+export interface ApprovalCorrections {
+  ai_title?: string;
+  doc_type?: string;
+  relation_flags?: RelationFlag[];
+  parent_edges?: { doc_id: number; relation_type: RelationType }[];
+  child_edges?: { doc_id: number; relation_type: RelationType }[];
+}
+
 /** Mock approval — tidak ada pengecekan role/IAM, siapa pun dapat menyetujui tahap saat ini. */
-export async function approveDocument(id: number, notes?: string): Promise<ProjectDocument> {
+export async function approveDocument(id: number, notes?: string, corrections: ApprovalCorrections = {}): Promise<ProjectDocument> {
   const res = await authFetch(`/documents/${id}/approve/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ notes: notes || '' }),
+    body: JSON.stringify({ ...corrections, notes: notes || '' }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.error || 'Gagal menyetujui dokumen.');
   }
   return res.json();
+}
+
+/** Satu pasangan hasil penilaian AI: klausul induk yang cocok dengan klausul dokumen yang mengubahnya. */
+export interface ComparisonPair {
+  rank: number;
+  similarity: number;
+  doc_id: number | null;
+  breadcrumb: string;       // breadcrumb klausul INDUK
+  text: string;             // teks klausul INDUK
+  page_number: number | null;
+  relation: string | null;  // breadcrumb klausul dokumen BARU yang memicu pasangan ini
+  relation_group: 'SELARAS' | 'BERTENTANGAN' | 'TIDAK TERKAIT' | null;
+  relation_reason: string | null;
+}
+
+export async function getComparisonPairs(sessionId: string): Promise<ComparisonPair[]> {
+  const res = await authFetch(`/search/?session_id=${encodeURIComponent(sessionId)}&page_size=200`);
+  if (!res.ok) throw new Error('Gagal memuat hasil perbandingan AI.');
+  const data = await res.json();
+  return data.results || [];
 }
 
 export async function rejectDocument(id: number, notes?: string): Promise<ProjectDocument> {

@@ -16,7 +16,8 @@ import {
   CheckCircle2,
   Menu,
   X,
-  PanelLeftClose
+  PanelLeftClose,
+  Building2
 } from 'lucide-react';
 import { UserRole } from '@/types';
 import { getActiveRole, setActiveRole, resetToMockData } from '@/lib/storage';
@@ -173,6 +174,12 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           href: '/regulations',
           icon: BookOpen,
           badge: '1.550+'
+        },
+        {
+          name: 'Satuan Kerja BI',
+          href: '/satker',
+          icon: Building2,
+          badge: '33 Satker'
         }
       ]
     }

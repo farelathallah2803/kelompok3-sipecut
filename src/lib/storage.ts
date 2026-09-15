@@ -14,7 +14,7 @@ import {
 import { INITIAL_DRAFTS } from '@/data/mockDrafts';
 import { runHarmonizationAnalysis } from './harmonizationEngine';
 
-const STORAGE_KEY = 'juknis_tracker_drafts_v7';
+const STORAGE_KEY = 'juknis_tracker_drafts_v8';
 const ROLE_KEY = 'juknis_active_role_v4';
 
 export const PBI_STAGES: PBIWorkflowStage[] = [

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -20,6 +20,7 @@ import {
 import { PetunjukTeknisDraft, WorkflowRegulationType, UploadedDraftFile, JuknisTemplateType } from '@/types';
 import { saveDraft, getActiveRole } from '@/lib/storage';
 import { MOCK_REGULATIONS } from '@/data/mockRegulations';
+import { SATUAN_KERJA_LIST, getSatkerByCode } from '@/data/satkerData';
 
 export default function UploadDraftForm() {
   const router = useRouter();
@@ -117,11 +118,31 @@ export default function UploadDraftForm() {
     }
   };
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const satkerCode = params.get('satker');
+      if (satkerCode) {
+        const satker = getSatkerByCode(satkerCode);
+        if (satker) {
+          setUnitKerja(`${satker.name} (${satker.code})`);
+          setRubrikSatker(satker.code);
+          setCategory(satker.sector);
+        }
+      }
+    }
+  }, []);
+
   const handleSatkerChange = (val: string) => {
     setUnitKerja(val);
     const match = val.match(/\(([A-Z]+)\)/);
     if (match && match[1]) {
-      setRubrikSatker(match[1]);
+      const code = match[1];
+      setRubrikSatker(code);
+      const satker = getSatkerByCode(code);
+      if (satker) {
+        setCategory(satker.sector);
+      }
     }
   };
   const handleSubmit = (e: React.FormEvent) => {
@@ -445,13 +466,48 @@ export default function UploadDraftForm() {
                   onChange={(e) => handleSatkerChange(e.target.value)}
                   className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 >
-                  <option value="Departemen Kebijakan Sistem Pembayaran (DKSP)">Departemen Kebijakan Sistem Pembayaran (DKSP)</option>
-                  <option value="Departemen Teknologi Informasi (DTI)">Departemen Teknologi Informasi (DTI)</option>
-                  <option value="Departemen Pengelolaan Moneter (DPM)">Departemen Pengelolaan Moneter (DPM)</option>
-                  <option value="Departemen Pengelolaan Devisa (DPD)">Departemen Pengelolaan Devisa (DPD)</option>
-                  <option value="Departemen Pengembangan UMKM dan Perlindungan Konsumen (DPUM)">Departemen Pengembangan UMKM (DPUM)</option>
-                  <option value="Departemen Manajemen Risiko (DMR)">Departemen Manajemen Risiko (DMR)</option>
-                  <option value="Departemen Hukum (DHk)">Departemen Hukum (DHk)</option>
+                  <optgroup label="1. Sektor Moneter (No. 01 - 05)">
+                    {SATUAN_KERJA_LIST.filter(s => s.sector === 'Moneter').map(s => (
+                      <option key={s.code} value={`${s.name} (${s.code})`}>
+                        {s.code} - {s.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="2. Sektor Makroprudensial (No. 06 - 09)">
+                    {SATUAN_KERJA_LIST.filter(s => s.sector === 'Makroprudensial').map(s => (
+                      <option key={s.code} value={`${s.name} (${s.code})`}>
+                        {s.code} - {s.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="3. Sektor Sistem Pembayaran (No. 10 - 13)">
+                    {SATUAN_KERJA_LIST.filter(s => s.sector === 'Sistem Pembayaran').map(s => (
+                      <option key={s.code} value={`${s.name} (${s.code})`}>
+                        {s.code} - {s.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="4. Sektor Pendukung Kebijakan (No. 14 - 19)">
+                    {SATUAN_KERJA_LIST.filter(s => s.sector === 'Pendukung Kebijakan').map(s => (
+                      <option key={s.code} value={`${s.name} (${s.code})`}>
+                        {s.code} - {s.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="5. Sektor Pendukung Organisasi (No. 20 - 32)">
+                    {SATUAN_KERJA_LIST.filter(s => s.sector === 'Pendukung Organisasi').map(s => (
+                      <option key={s.code} value={`${s.name} (${s.code})`}>
+                        {s.code} - {s.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="6. Jaringan Kantor (No. 33)">
+                    {SATUAN_KERJA_LIST.filter(s => s.sector === 'Jaringan Kantor').map(s => (
+                      <option key={s.code} value={`${s.name} (${s.code})`}>
+                        {s.code} - {s.name}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
 
@@ -465,10 +521,13 @@ export default function UploadDraftForm() {
                   className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 >
                   <option value="Sistem Pembayaran">Sistem Pembayaran</option>
-                  <option value="Pengelolaan Moneter">Pengelolaan Moneter</option>
-                  <option value="Stabilitas Sistem Keuangan">Stabilitas Sistem Keuangan</option>
-                  <option value="Manajemen Risiko &amp; Tata Kelola">Manajemen Risiko &amp; Tata Kelola</option>
-                  <option value="Teknologi Informasi">Teknologi Informasi</option>
+                  <option value="Moneter">Moneter</option>
+                  <option value="Makroprudensial">Makroprudensial</option>
+                  <option value="Pendukung Kebijakan">Pendukung Kebijakan</option>
+                  <option value="Pendukung Organisasi">Pendukung Organisasi</option>
+                  <option value="Jaringan Kantor">Jaringan Kantor</option>
+                  <option value="Manajemen Risiko & Tata Kelola">Manajemen Risiko &amp; Tata Kelola</option>
+                  <option value="Layanan Digital & Keamanan Siber">Layanan Digital &amp; Keamanan Siber</option>
                 </select>
               </div>
             </div>

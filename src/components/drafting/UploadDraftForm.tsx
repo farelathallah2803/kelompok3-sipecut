@@ -25,7 +25,8 @@ import {
   ChevronDown,
   ChevronUp,
   BookOpen,
-  Info
+  Info,
+  QrCode
 } from 'lucide-react';
 import { 
   PetunjukTeknisDraft, 
@@ -39,6 +40,8 @@ import {
 import { saveDraft, getActiveRole } from '@/lib/storage';
 import { MOCK_REGULATIONS } from '@/data/mockRegulations';
 import { SATUAN_KERJA_LIST, getSatkerByCode } from '@/data/satkerData';
+import QrScannerModal from '@/components/common/QrScannerModal';
+import { ParsedJdihQrResult } from '@/lib/jdihQrParser';
 
 export default function UploadDraftForm() {
   const router = useRouter();
@@ -63,6 +66,7 @@ export default function UploadDraftForm() {
   ]);
   const [searchRegQuery, setSearchRegQuery] = useState('');
   const [isSearchRegOpen, setIsSearchRegOpen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   // AI Dissection States
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -123,6 +127,13 @@ export default function UploadDraftForm() {
 
   const removeLegalBase = (regNumber: string) => {
     setSelectedRegulations(selectedRegulations.filter(r => r !== regNumber));
+  };
+
+  const handleQrSelect = (res: ParsedJdihQrResult) => {
+    const regNum = res.regulationNumber || res.suggestedSearchQuery;
+    if (regNum && !selectedRegulations.includes(regNum)) {
+      setSelectedRegulations(prev => [...prev, regNum]);
+    }
   };
 
   // AI Bedah Dokumen Handler with Chunked Upload (Kapasitas s.d. 200 MB)
@@ -970,9 +981,20 @@ export default function UploadDraftForm() {
                 <label className="block text-xs font-semibold text-slate-800">
                   Dasar Hukum / Aturan Acuan (JDIH BI) <span className="text-rose-500">*</span>
                 </label>
-                <span className="text-[11px] text-slate-500">
-                  {selectedRegulations.length} regulasi terpilih
-                </span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsQrModalOpen(true)}
+                    className="inline-flex items-center space-x-1.5 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition shadow-2xs"
+                    title="Pindai QR Code Dokumen Regulasi dari JDIH Bank Indonesia"
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Pindai QR JDIH</span>
+                  </button>
+                  <span className="text-[11px] text-slate-500">
+                    {selectedRegulations.length} terpilih
+                  </span>
+                </div>
               </div>
 
               {/* Selected Regulations Badges */}
@@ -1416,6 +1438,15 @@ export default function UploadDraftForm() {
           </button>
         </div>
       </form>
+
+      {/* JDIH QR Scanner Modal */}
+      <QrScannerModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        onSelectRegulation={handleQrSelect}
+        actionLabel="Tambahkan ke Dasar Hukum"
+        contextTitle="Pindai QR Dasar Hukum JDIH BI"
+      />
     </div>
   );
 }

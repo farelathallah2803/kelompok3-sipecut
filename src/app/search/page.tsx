@@ -12,9 +12,12 @@ import {
   ArrowLeft,
   ArrowRight,
   Filter,
-  X
+  X,
+  QrCode
 } from 'lucide-react';
 import { searchAllRegulations, SmartSearchResponse, SearchResultArticle } from '@/lib/smartSearchEngine';
+import QrScannerModal from '@/components/common/QrScannerModal';
+import { ParsedJdihQrResult } from '@/lib/jdihQrParser';
 
 const POPULAR_QUERIES = [
   'Larangan surcharge',
@@ -32,6 +35,12 @@ function SearchContent() {
   const [selectedSectorFilter, setSelectedSectorFilter] = useState<string>('ALL');
   const [searchResult, setSearchResult] = useState<SmartSearchResponse | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+
+  const handleQrSelect = (res: ParsedJdihQrResult) => {
+    const q = res.suggestedSearchQuery || res.regulationNumber || res.rawText;
+    handleExecuteSearch(q);
+  };
 
   useEffect(() => {
     if (initialQ) {
@@ -91,16 +100,28 @@ function SearchContent() {
             value={query}
             onChange={(e) => handleExecuteSearch(e.target.value)}
             placeholder="Ketik kata kunci atau topik (misal: 'larangan surcharge', 'sanksi denda', 'retensi log')..."
-            className="w-full text-xs sm:text-sm text-slate-900 pl-9 pr-8 py-2 bg-transparent focus:outline-hidden placeholder:text-slate-400"
+            className="w-full text-xs sm:text-sm text-slate-900 pl-9 pr-36 py-2 bg-transparent focus:outline-hidden placeholder:text-slate-400"
           />
-          {query && (
+          <div className="absolute right-2 flex items-center space-x-1">
+            {query && (
+              <button
+                onClick={() => handleExecuteSearch('')}
+                className="text-slate-400 hover:text-slate-600 p-1"
+                title="Hapus pencarian"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button
-              onClick={() => handleExecuteSearch('')}
-              className="absolute right-2 text-slate-400 hover:text-slate-600 p-1"
+              type="button"
+              onClick={() => setIsQrModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-semibold transition"
+              title="Pindai QR Code Dokumen JDIH Bank Indonesia"
             >
-              <X className="w-3.5 h-3.5" />
+              <QrCode className="w-3.5 h-3.5 text-blue-600" />
+              <span className="hidden sm:inline">Scan QR JDIH</span>
             </button>
-          )}
+          </div>
         </div>
 
         {/* Quick Suggestion Chips */}
@@ -300,6 +321,15 @@ function SearchContent() {
           </div>
         </div>
       )}
+
+      {/* JDIH BI QR Code Scanner Modal */}
+      <QrScannerModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        onSelectRegulation={handleQrSelect}
+        actionLabel="Tampilkan Regulasi &amp; Pasal"
+        contextTitle="Pindai QR Regulasi JDIH BI"
+      />
     </div>
   );
 }

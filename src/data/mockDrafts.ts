@@ -13,7 +13,7 @@ export const INITIAL_DRAFTS: PetunjukTeknisDraft[] = [
     year: 2025,
     category: 'Sistem Pembayaran',
     unitKerja: 'Departemen Kebijakan Sistem Pembayaran (DKSP)',
-    proposerName: 'Ahmad Fauzi',
+    proposerName: 'Tim Drafter DKSP',
     currentStage: 'juknis_reviu_teknis',
     status: 'in_review',
     typography: { ...DEFAULT_BI_TYPOGRAPHY },
@@ -145,7 +145,7 @@ export const INITIAL_DRAFTS: PetunjukTeknisDraft[] = [
       {
         id: 'log-1',
         timestamp: '2025-09-02T08:30:00Z',
-        actor: 'Ahmad Fauzi',
+        actor: 'Tim Drafter DKSP',
         role: 'Drafter Unit Kerja',
         action: 'Penyusunan Rancangan oleh Satker Pemrakarsa',
         stage: 'juknis_penyusunan',

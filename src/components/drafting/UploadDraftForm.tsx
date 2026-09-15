@@ -50,7 +50,7 @@ export default function UploadDraftForm() {
   const [unitKerja, setUnitKerja] = useState('Departemen Kebijakan Sistem Pembayaran (DKSP)');
   const [rubrikSatker, setRubrikSatker] = useState('DKSP');
   const [category, setCategory] = useState('Sistem Pembayaran');
-  const [proposerName, setProposerName] = useState('Ahmad Fauzi');
+  const [proposerName, setProposerName] = useState('');
   const [isConfidential, setIsConfidential] = useState(false);
   const [scope, setScope] = useState<'INTERNAL' | 'EKSTERNAL'>('INTERNAL');
   const [background, setBackground] = useState('');
@@ -68,25 +68,8 @@ export default function UploadDraftForm() {
   const [analysisStatus, setAnalysisStatus] = useState<string>('');
   const [aiDissectionDone, setAiDissectionDone] = useState(false);
   const [parsedDefinitions, setParsedDefinitions] = useState<JuknisDefinitionItem[]>([]);
-  const [parsedChapters, setParsedChapters] = useState<DraftChapter[]>([
-    {
-      id: 'chap-1',
-      chapterNumber: 'BAB I',
-      title: 'KETENTUAN UMUM & OPERASIONAL',
-      articles: [
-        {
-          id: 'art-1',
-          articleNumber: 'Pasal 1',
-          title: 'Ketentuan Umum Pelaksanaan',
-          content: 'Penyelenggara dan satuan kerja terkait wajib mematuhi seluruh standar teknis dan batas waktu yang ditetapkan oleh Bank Indonesia.',
-          explanation: 'Ketentuan materiil pelaksanaan petunjuk teknis.'
-        }
-      ]
-    }
-  ]);
-  const [expandedChapters, setExpandedChapters] = useState<Record<string, boolean>>({
-    'chap-1': true
-  });
+  const [parsedChapters, setParsedChapters] = useState<DraftChapter[]>([]);
+  const [expandedChapters, setExpandedChapters] = useState<Record<string, boolean>>({});
 
   const regSuggestions = MOCK_REGULATIONS.filter(reg => 
     !selectedRegulations.includes(reg.number) && 
@@ -95,12 +78,7 @@ export default function UploadDraftForm() {
   );
   
   // File state
-  const [uploadedFile, setUploadedFile] = useState<UploadedDraftFile | null>({
-    name: 'Rancangan_Regulasi_Draft_Final.pdf',
-    size: 2458200,
-    type: 'application/pdf',
-    uploadedAt: new Date().toISOString()
-  });
+  const [uploadedFile, setUploadedFile] = useState<UploadedDraftFile | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -204,16 +182,58 @@ export default function UploadDraftForm() {
 
       if (Array.isArray(parsed.chapters) && parsed.chapters.length > 0) {
         setParsedChapters(parsed.chapters);
-        // Expand first 2 chapters
+        // Expand all parsed chapters so user can see every changeable text box immediately
         const exp: Record<string, boolean> = {};
-        parsed.chapters.forEach((c: DraftChapter, i: number) => {
-          exp[c.id] = i < 3;
+        parsed.chapters.forEach((c: DraftChapter) => {
+          exp[c.id] = true;
         });
         setExpandedChapters(exp);
+      } else {
+        // Fallback default chapters if AI did not return chapters
+        const defaultChapters: DraftChapter[] = [
+          {
+            id: `chap-${Date.now()}-1`,
+            chapterNumber: 'BAB I',
+            title: 'KETENTUAN UMUM',
+            articles: [
+              {
+                id: `art-${Date.now()}-1-1`,
+                articleNumber: 'Pasal 1',
+                title: 'Definisi & Ruang Lingkup',
+                content: 'Dalam Petunjuk Teknis ini yang dimaksud dengan:\n1. Bank Indonesia adalah Bank Sentral Republik Indonesia.\n2. Penyelenggara adalah pihak yang memenuhi kriteria operasional sesuai ketentuan Bank Indonesia.',
+                explanation: 'Cukup jelas'
+              }
+            ]
+          },
+          {
+            id: `chap-${Date.now()}-2`,
+            chapterNumber: 'BAB II',
+            title: 'PELAKSANAAN & TATA CARA TEKNIS',
+            articles: [
+              {
+                id: `art-${Date.now()}-2-1`,
+                articleNumber: 'Pasal 2',
+                title: 'Kewajiban Penyelenggara',
+                content: 'Penyelenggara wajib menyampaikan laporan berkala dan mematuhi batasan operasional serta mitigasi risiko sesuai petunjuk teknis ini.',
+                explanation: 'Cukup jelas'
+              }
+            ]
+          }
+        ];
+        setParsedChapters(defaultChapters);
+        setExpandedChapters({ [defaultChapters[0].id]: true, [defaultChapters[1].id]: true });
       }
 
       setAiDissectionDone(true);
       setAnalysisStatus('');
+
+      // Auto-scroll to Box Changeable Text section
+      setTimeout(() => {
+        const el = document.getElementById('section-changeable-text');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 350);
     } catch (err: any) {
       console.error('Error dissecting document with AI:', err);
       setErrorMsg(err.message || 'Terjadi kesalahan saat membedah dokumen dengan AI.');
@@ -283,15 +303,89 @@ export default function UploadDraftForm() {
     }));
   };
 
+  const handleChapterNumberChange = (chapId: string, newNumber: string) => {
+    setParsedChapters(prev => prev.map(c => c.id === chapId ? { ...c, chapterNumber: newNumber } : c));
+  };
+
+  const handleChapterTitleChange = (chapId: string, newTitle: string) => {
+    setParsedChapters(prev => prev.map(c => c.id === chapId ? { ...c, title: newTitle } : c));
+  };
+
+  const handleAddChapter = () => {
+    const nextNum = parsedChapters.length + 1;
+    const newChapId = `chap-${Date.now()}`;
+    const romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+    const roman = romanNumerals[nextNum - 1] || `${nextNum}`;
+
+    const newChapter: DraftChapter = {
+      id: newChapId,
+      chapterNumber: `BAB ${roman}`,
+      title: 'KETENTUAN PELAKSANAAN TEKNIS',
+      articles: [
+        {
+          id: `art-${Date.now()}-1`,
+          articleNumber: `Pasal ${parsedChapters.reduce((acc, c) => acc + c.articles.length, 0) + 1}`,
+          title: 'Ketentuan Pelaksanaan',
+          content: 'Setiap pihak wajib memenuhi ketentuan teknis dan prosedur operasional sesuai standar Bank Indonesia.',
+          explanation: 'Cukup jelas'
+        }
+      ]
+    };
+    setParsedChapters(prev => [...prev, newChapter]);
+    setExpandedChapters(prev => ({ ...prev, [newChapId]: true }));
+  };
+
+  const handleDeleteChapter = (chapId: string) => {
+    setParsedChapters(prev => prev.filter(chap => chap.id !== chapId));
+  };
+
+  const handleArticleNumberChange = (chapId: string, artId: string, newNumber: string) => {
+    setParsedChapters(prev => prev.map(chap => {
+      if (chap.id !== chapId) return chap;
+      return {
+        ...chap,
+        articles: chap.articles.map(art => art.id === artId ? { ...art, articleNumber: newNumber } : art)
+      };
+    }));
+  };
+
+  const handleArticleExplanationChange = (chapId: string, artId: string, newExp: string) => {
+    setParsedChapters(prev => prev.map(chap => {
+      if (chap.id !== chapId) return chap;
+      return {
+        ...chap,
+        articles: chap.articles.map(art => art.id === artId ? { ...art, explanation: newExp } : art)
+      };
+    }));
+  };
+
+  const handleAppendToArticle = (chapId: string, artId: string, textToAppend: string) => {
+    setParsedChapters(prev => prev.map(c => {
+      if (c.id !== chapId) return c;
+      return {
+        ...c,
+        articles: c.articles.map(a => {
+          if (a.id !== artId) return a;
+          const separator = a.content.endsWith('\n') || !a.content ? '' : '\n';
+          return {
+            ...a,
+            content: `${a.content}${separator}${textToAppend}`
+          };
+        })
+      };
+    }));
+  };
+
   const handleAddArticle = (chapId: string) => {
     setParsedChapters(prev => prev.map(chap => {
       if (chap.id !== chapId) return chap;
-      const nextNum = chap.articles.length + 1;
+      const totalArticlesNow = parsedChapters.reduce((acc, c) => acc + c.articles.length, 0) + 1;
       const newArt: DraftArticle = {
         id: `art-${Date.now()}`,
-        articleNumber: `Pasal ${nextNum}`,
-        title: `Ketentuan Tambahan ${nextNum}`,
-        content: 'Tuliskan rumusan ketentuan atau kewajiban di sini...'
+        articleNumber: `Pasal ${totalArticlesNow}`,
+        title: `Ketentuan Pokok ${totalArticlesNow}`,
+        content: 'Tuliskan rumusan ketentuan atau kewajiban di sini (changeable text)...',
+        explanation: 'Cukup jelas'
       };
       return {
         ...chap,
@@ -535,21 +629,25 @@ export default function UploadDraftForm() {
           {uploadedFile && (
             <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50/80 border border-blue-200 text-xs">
               <div className="flex items-center space-x-2.5">
-                <div className="w-8 h-8 rounded bg-blue-600 text-white flex items-center justify-center font-bold text-[10px]">
-                  PDF
+                <div className="w-8 h-8 rounded bg-blue-600 text-white flex items-center justify-center font-bold text-[10px] uppercase">
+                  {uploadedFile.name.split('.').pop() || 'DOK'}
                 </div>
                 <div>
                   <div className="font-semibold text-slate-900">{uploadedFile.name}</div>
                   <div className="text-[10px] text-slate-500">
-                    {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB &bull; Berkas aktif dianalisis
+                    {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB &bull; Berkas aktif dianalisis oleh Gemini AI
                   </div>
                 </div>
               </div>
 
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); setUploadedFile(null); }}
-                className="p-1 text-slate-400 hover:text-rose-600 transition"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setUploadedFile(null);
+                  setAiDissectionDone(false);
+                }}
+                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition"
                 title="Hapus berkas"
               >
                 <X className="w-4 h-4" />
@@ -762,7 +860,8 @@ export default function UploadDraftForm() {
                   type="text"
                   value={proposerName}
                   onChange={(e) => setProposerName(e.target.value)}
-                  className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  placeholder="Masukkan nama pengusul / PIC drafter..."
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-medium"
                 />
               </div>
 
@@ -894,28 +993,44 @@ export default function UploadDraftForm() {
           </div>
         </div>
 
-        {/* Step 4: LIVE AI DISSECTION & INTERACTIVE CHAPTER/ARTICLE EDITOR */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+        {/* Step 4: LIVE AI DISSECTION & BOX CHANGEABLE TEXT PER PASAL */}
+        <div id="section-changeable-text" className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div>
               <div className="flex items-center space-x-2">
-                <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                  4. Bedah Naskah &amp; Editor Substansi Pasal Juknis
+                <span className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                  <Edit3 className="w-4 h-4 text-blue-600" />
+                  <span>4. Box Changeable Text &bull; Editor Substansi Pasal Juknis</span>
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-                  Interaktif &amp; Editable
-                </span>
+                {parsedChapters.length > 0 ? (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    {parsedChapters.reduce((acc, c) => acc + c.articles.length, 0)} Pasal Siap Diedit
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                    Menunggu Berkas Unggahan
+                  </span>
+                )}
               </div>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                Struktur Bab dan Pasal di bawah ini diekstrak otomatis oleh AI dan dapat Anda sunting secara langsung di website.
+              <p className="text-[11px] text-slate-500 mt-1">
+                Ketika berkas dokumen diunggah, AI langsung membedah bab &amp; pasal secara otomatis. Anda dapat langsung mengubah teks nomor pasal, judul, maupun isi uraian pasal per pasal di dalam box interaktif di bawah ini.
               </p>
             </div>
 
             <div className="flex items-center space-x-2 shrink-0">
               <button
                 type="button"
+                onClick={handleAddChapter}
+                className="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-xs font-bold text-blue-700 transition flex items-center space-x-1 shadow-2xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Tambah Bab Baru</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={handleAddDefinition}
-                className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-semibold text-slate-700 transition"
+                className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 transition"
               >
                 + Definisi Istilah
               </button>
@@ -935,7 +1050,7 @@ export default function UploadDraftForm() {
                   onClick={handleAddDefinition}
                   className="text-[10px] text-blue-600 font-bold hover:underline"
                 >
-                  + Tambah
+                  + Tambah Istilah
                 </button>
               </div>
 
@@ -972,101 +1087,219 @@ export default function UploadDraftForm() {
             </div>
           )}
 
-          {/* Chapters & Articles Editor List */}
-          <div className="space-y-3">
-            {parsedChapters.map((chap) => {
-              const isExpanded = expandedChapters[chap.id] ?? true;
+          {/* Empty State when no chapters parsed yet */}
+          {parsedChapters.length === 0 && (
+            <div className="p-8 text-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 space-y-3">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto shadow-2xs border border-blue-100">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-slate-800">Box Changeable Text Belum Aktif</h4>
+                <p className="text-[11px] text-slate-500 max-w-md mx-auto mt-1 leading-relaxed">
+                  Silakan unggah berkas naskah Juknis (PDF / DOCX) pada langkah 1 di atas. Gemini AI akan otomatis membaca, mengekstrak, dan memunculkan <strong>Box Changeable Text</strong> untuk setiap pasal di sini agar dapat langsung Anda edit.
+                </p>
+              </div>
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={handleAddChapter}
+                  className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-lg border border-blue-300 bg-white hover:bg-blue-50 text-blue-700 text-xs font-bold shadow-2xs transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Tulis Bab &amp; Pasal Secara Manual (Tanpa Berkas)</span>
+                </button>
+              </div>
+            </div>
+          )}
 
-              return (
-                <div key={chap.id} className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-                  {/* Chapter Header Bar */}
-                  <div 
-                    onClick={() => toggleChapterExpand(chap.id)}
-                    className="p-3 bg-slate-50 hover:bg-slate-100/80 cursor-pointer flex items-center justify-between border-b border-slate-200 transition"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono text-xs font-black text-blue-900 bg-blue-100/70 px-2 py-0.5 rounded">
-                        {chap.chapterNumber}
-                      </span>
-                      <span className="font-bold text-xs text-slate-800">
-                        {chap.title}
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        ({chap.articles.length} Pasal)
-                      </span>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddArticle(chap.id);
-                        }}
-                        className="px-2 py-1 rounded bg-white hover:bg-blue-50 border border-slate-200 text-[10px] font-semibold text-blue-700 transition"
-                      >
-                        + Tambah Pasal
-                      </button>
-                      {isExpanded ? (
-                        <ChevronUp className="w-4 h-4 text-slate-400" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4 text-slate-400" />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Chapter Articles Body */}
-                  {isExpanded && (
-                    <div className="p-3.5 bg-white space-y-3">
-                      {chap.articles.length === 0 ? (
-                        <div className="text-center py-4 text-slate-400 text-xs">
-                          Belum ada pasal dalam bab ini. Klik <strong>+ Tambah Pasal</strong> untuk menambahkan.
-                        </div>
-                      ) : (
-                        chap.articles.map((art) => (
-                          <div key={art.id} className="p-3 rounded-lg border border-slate-200/80 bg-slate-50/40 space-y-2">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center space-x-2 flex-1">
-                                <span className="text-xs font-black text-slate-800 shrink-0 font-mono bg-white px-2 py-0.5 rounded border border-slate-200">
-                                  {art.articleNumber}
-                                </span>
-                                <input
-                                  type="text"
-                                  value={art.title}
-                                  onChange={(e) => handleArticleTitleChange(chap.id, art.id, e.target.value)}
-                                  placeholder="Judul / Pokok Pengaturan Pasal"
-                                  className="text-xs font-semibold text-slate-800 px-2.5 py-1 rounded border border-slate-200 bg-white flex-1 focus:ring-1 focus:ring-blue-500"
-                                />
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteArticle(chap.id, art.id)}
-                                className="text-slate-400 hover:text-rose-600 p-1 transition"
-                                title="Hapus pasal"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-
-                            <div>
-                              <textarea
-                                value={art.content}
-                                onChange={(e) => handleArticleContentChange(chap.id, art.id, e.target.value)}
-                                rows={3}
-                                placeholder="Rumusan substansi pasal..."
-                                className="w-full text-xs text-slate-800 p-2.5 rounded-lg border border-slate-200 bg-white focus:ring-1 focus:ring-blue-500 font-mono leading-relaxed"
-                              />
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  )}
+          {/* Chapters & Articles Editor List (Box Changeable Text) */}
+          {parsedChapters.length > 0 && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs text-emerald-900">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>
+                    <strong>Box Changeable Text Aktif:</strong> Silakan sunting nomor pasal, judul pasal, maupun kotak uraian isi pasal di bawah ini sesuai kebutuhan perumusan naskah.
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-200/70 text-emerald-800 px-2 py-0.5 rounded shrink-0">
+                  Editable
+                </span>
+              </div>
+
+              {parsedChapters.map((chap) => {
+                const isExpanded = expandedChapters[chap.id] ?? true;
+
+                return (
+                  <div key={chap.id} className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs bg-white">
+                    {/* Chapter Header Bar */}
+                    <div 
+                      onClick={() => toggleChapterExpand(chap.id)}
+                      className="p-3 bg-slate-50 hover:bg-slate-100/80 cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 transition"
+                    >
+                      <div className="flex items-center space-x-2 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="text"
+                          value={chap.chapterNumber}
+                          onChange={(e) => handleChapterNumberChange(chap.id, e.target.value)}
+                          placeholder="BAB I"
+                          className="font-mono text-xs font-black text-blue-900 bg-blue-100/80 px-2 py-1 rounded border border-blue-200 w-24 text-center focus:ring-1 focus:ring-blue-500"
+                        />
+                        <input
+                          type="text"
+                          value={chap.title}
+                          onChange={(e) => handleChapterTitleChange(chap.id, e.target.value)}
+                          placeholder="Judul Bab (contoh: KETENTUAN UMUM)"
+                          className="font-bold text-xs text-slate-800 bg-white px-2.5 py-1 rounded border border-slate-300 flex-1 focus:ring-1 focus:ring-blue-500"
+                        />
+                        <span className="text-[10px] text-slate-400 shrink-0 font-medium">
+                          ({chap.articles.length} Pasal)
+                        </span>
+                      </div>
+
+                      <div className="flex items-center space-x-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddArticle(chap.id);
+                          }}
+                          className="px-2.5 py-1 rounded bg-white hover:bg-blue-50 border border-slate-200 text-xs font-semibold text-blue-700 transition shadow-2xs"
+                        >
+                          + Tambah Pasal
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteChapter(chap.id);
+                          }}
+                          className="p-1 rounded text-slate-400 hover:text-rose-600 transition"
+                          title="Hapus Bab ini"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        {isExpanded ? (
+                          <ChevronUp className="w-4 h-4 text-slate-400" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-slate-400" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Chapter Articles Body: List of Box Changeable Text */}
+                    {isExpanded && (
+                      <div className="p-4 bg-white space-y-3.5">
+                        {chap.articles.length === 0 ? (
+                          <div className="text-center py-6 text-slate-400 text-xs border border-dashed border-slate-200 rounded-lg">
+                            Belum ada pasal dalam bab ini. Klik <strong>+ Tambah Pasal</strong> untuk membuat pasal baru.
+                          </div>
+                        ) : (
+                          chap.articles.map((art) => {
+                            const wordCount = art.content.trim() ? art.content.trim().split(/\s+/).length : 0;
+                            const charCount = art.content.length;
+
+                            return (
+                              <div 
+                                key={art.id} 
+                                className="p-3.5 rounded-xl border border-blue-200/80 bg-gradient-to-b from-blue-50/20 to-white space-y-2.5 shadow-xs transition hover:border-blue-300"
+                              >
+                                {/* Article Header Bar */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                  <div className="flex items-center space-x-2 flex-1">
+                                    <input
+                                      type="text"
+                                      value={art.articleNumber}
+                                      onChange={(e) => handleArticleNumberChange(chap.id, art.id, e.target.value)}
+                                      placeholder="Pasal 1"
+                                      className="text-xs font-black text-blue-900 px-2.5 py-1 rounded-md border border-blue-300 bg-white w-24 text-center font-mono shadow-2xs focus:ring-1 focus:ring-blue-500"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={art.title}
+                                      onChange={(e) => handleArticleTitleChange(chap.id, art.id, e.target.value)}
+                                      placeholder="Judul / Pokok Pengaturan Pasal (contoh: Ketentuan Operasional)"
+                                      className="text-xs font-bold text-slate-800 px-3 py-1 rounded-md border border-slate-200 bg-white flex-1 focus:ring-1 focus:ring-blue-500"
+                                    />
+                                  </div>
+
+                                  <div className="flex items-center space-x-2 shrink-0">
+                                    <span className="text-[10px] font-semibold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-full">
+                                      Box Changeable Text
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteArticle(chap.id, art.id)}
+                                      className="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition"
+                                      title="Hapus pasal ini"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Main Changeable Text Box Container */}
+                                <div className="border border-slate-300 rounded-lg overflow-hidden bg-white focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition shadow-2xs">
+                                  {/* Textarea Toolbar */}
+                                  <div className="flex items-center justify-between px-3 py-1.5 bg-slate-50 border-b border-slate-200 text-[11px]">
+                                    <span className="font-semibold text-slate-700 flex items-center space-x-1.5">
+                                      <Edit3 className="w-3 h-3 text-blue-600" />
+                                      <span>Box Isi Ketentuan Pasal (Changeable Text):</span>
+                                    </span>
+
+                                    <div className="flex items-center space-x-2 text-[10px]">
+                                      <span className="text-slate-400 font-mono">
+                                        {charCount} karakter &bull; {wordCount} kata
+                                      </span>
+                                      <div className="h-3 w-px bg-slate-200" />
+                                      <button
+                                        type="button"
+                                        onClick={() => handleAppendToArticle(chap.id, art.id, `(${(art.content.match(/\(\d+\)/g) || []).length + 1}) `)}
+                                        className="text-blue-600 hover:text-blue-800 font-semibold hover:underline"
+                                      >
+                                        + Ayat
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleAppendToArticle(chap.id, art.id, 'a. ')}
+                                        className="text-blue-600 hover:text-blue-800 font-semibold hover:underline"
+                                      >
+                                        + Butir a.
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Changeable Textarea */}
+                                  <textarea
+                                    value={art.content}
+                                    onChange={(e) => handleArticleContentChange(chap.id, art.id, e.target.value)}
+                                    rows={4}
+                                    placeholder="Ketik atau ubah teks isi pasal di sini..."
+                                    className="w-full text-xs text-slate-900 p-3 bg-white focus:outline-hidden font-sans leading-relaxed resize-y"
+                                  />
+                                </div>
+
+                                {/* Penjelasan / Tafsir Pasal (Optional) */}
+                                <div>
+                                  <input
+                                    type="text"
+                                    value={art.explanation || ''}
+                                    onChange={(e) => handleArticleExplanationChange(chap.id, art.id, e.target.value)}
+                                    placeholder="Penjelasan pasal (opsional): Cukup jelas / Penjelasan teknis tambahan..."
+                                    className="w-full text-[11px] text-slate-600 px-2.5 py-1.5 rounded-md border border-slate-200 bg-slate-50/60 focus:bg-white focus:ring-1 focus:ring-blue-500"
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Submit Buttons */}

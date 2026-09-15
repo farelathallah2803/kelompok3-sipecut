@@ -1,32 +1,34 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  Scale,
-  FileText,
-  PlusCircle,
-  BookOpen,
-  Briefcase,
+import { 
+  FileText, 
+  PlusCircle, 
+  BookOpen, 
+  UserCheck, 
+  ChevronDown, 
+  RotateCcw,
   Sparkles,
   Search,
-  LogOut,
+  CheckCircle2,
   Menu,
   X,
-  PanelLeftClose
+  PanelLeftClose,
+  Building2
 } from 'lucide-react';
-import { UserRole, Membership } from '@/types';
-import { getMemberships, getActiveProject, setActiveProject, fetchMe, logout } from '@/lib/auth';
+import { UserRole } from '@/types';
+import { getActiveRole, setActiveRole, resetToMockData } from '@/lib/storage';
 import SmartSearchModal from '@/components/search/SmartSearchModal';
-import ProjectSelector from '@/components/layout/ProjectSelector';
 
 export const ALLOWED_ROLES: UserRole[] = [
   'drafter',
   'pimpinan_satker',
   'dhuk_legal',
   'dmr_reviewer',
-  'dai_auditor'
+  'dai_auditor',
+  'dmst_governance'
 ];
 
 export const ROLE_DEFINITIONS: Record<UserRole, { label: string; badge: string; color: string; desc: string }> = {
@@ -39,38 +41,38 @@ export const ROLE_DEFINITIONS: Record<UserRole, { label: string; badge: string; 
   pimpinan_satker: {
     label: 'Pimpinan Satker',
     badge: 'Pimpinan Satker',
-    color: 'bg-slate-100 text-slate-800 border-slate-200',
+    color: 'bg-blue-50 text-blue-900 border-blue-200',
     desc: 'Persetujuan naskah sebelum diajukan ke telaah terpadu'
   },
   dhuk_legal: {
     label: 'Legal DHk',
     badge: 'Legal DHk',
-    color: 'bg-slate-100 text-slate-800 border-slate-200',
+    color: 'bg-blue-100 text-blue-900 border-blue-300',
     desc: 'Reviu aspek hukum, hierarki peraturan, dan publikasi'
   },
   dmr_reviewer: {
     label: 'DMR',
     badge: 'DMR',
-    color: 'bg-slate-100 text-slate-800 border-slate-200',
+    color: 'bg-amber-50 text-amber-900 border-amber-200',
     desc: 'Analisis profil risiko operasional dan rencana mitigasi'
   },
   dai_auditor: {
     label: 'DAI',
     badge: 'DAI',
-    color: 'bg-slate-100 text-slate-800 border-slate-200',
+    color: 'bg-emerald-50 text-emerald-900 border-emerald-200',
     desc: 'Evaluasi sistem pengendalian intern dan kelayakan audit'
+  },
+  dmst_governance: {
+    label: 'DMST',
+    badge: 'DMST',
+    color: 'bg-gold-100 text-amber-950 border-gold-300',
+    desc: 'Evaluasi keselarasan strategi & tata kelola naskah'
   },
   kemenkum_kemenkeu: {
     label: 'Kemenkum & Kemenkeu',
     badge: 'Kemenkum & Kemenkeu',
     color: 'bg-slate-100 text-slate-800 border-slate-200',
     desc: 'Harmonisasi kementerian'
-  },
-  dmst_governance: {
-    label: 'DMST',
-    badge: 'DMST',
-    color: 'bg-slate-100 text-slate-800 border-slate-200',
-    desc: 'Evaluasi tata kelola'
   },
   sekretariat_rdg: {
     label: 'Sekretariat RDG',
@@ -99,46 +101,17 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
   const pathname = usePathname();
-  const [memberships, setMemberships] = useState<Membership[]>([]);
-  const [activeProject, setActiveProjectState] = useState<Membership | null>(null);
-  const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
+  const [role, setRoleState] = useState<UserRole>('drafter');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const [membershipsLoaded, setMembershipsLoaded] = useState(false);
-
   useEffect(() => {
-    setMemberships(getMemberships());
-    setActiveProjectState(getActiveProject());
-
-    // Refresh membership list from the backend in the background.
-    fetchMe().then((me) => {
-      if (me) setMemberships(me.memberships);
-      setMembershipsLoaded(true);
-    });
-
-    const handleProjectChange = () => {
-      setActiveProjectState(getActiveProject());
-      setIsProjectSelectorOpen(false);
-    };
-    window.addEventListener('projectSelected', handleProjectChange);
-    return () => window.removeEventListener('projectSelected', handleProjectChange);
+    setRoleState(getActiveRole());
+    const handleRoleChange = () => setRoleState(getActiveRole());
+    window.addEventListener('juknis_role_changed', handleRoleChange);
+    return () => window.removeEventListener('juknis_role_changed', handleRoleChange);
   }, []);
-
-  // Force a project pick if the user has memberships but hasn't chosen one yet.
-  useEffect(() => {
-    if (!membershipsLoaded || activeProject) return;
-    if (memberships.length === 1) {
-      setActiveProject(memberships[0]);
-      return;
-    }
-    setIsProjectSelectorOpen(true);
-  }, [membershipsLoaded, memberships, activeProject]);
-
-  const handleLogout = () => {
-    logout();
-    window.location.href = '/login';
-  };
 
   // Global shortcut Ctrl+K
   useEffect(() => {
@@ -157,6 +130,17 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
+  const handleSelectRole = (newRole: UserRole) => {
+    setActiveRole(newRole);
+    setRoleState(newRole);
+    setDropdownOpen(false);
+  };
+
+  const handleResetData = () => {
+    if (confirm('Apakah Anda yakin ingin mereset seluruh data alur ke data sampel resmi?')) {
+      resetToMockData();
+    }
+  };
 
   const navLinks = [
     {
@@ -190,6 +174,12 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           href: '/regulations',
           icon: BookOpen,
           badge: '1.550+'
+        },
+        {
+          name: 'Satuan Kerja BI',
+          href: '/satker',
+          icon: Building2,
+          badge: '33 Satker'
         }
       ]
     }
@@ -200,23 +190,12 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
       {/* Brand Header with Hide Button */}
       <div className="p-4 border-b border-slate-200">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2.5 group min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-[#003366] flex items-center justify-center text-white shadow-sm shrink-0 group-hover:scale-105 transition">
-              <Scale className="w-4.5 h-4.5 text-amber-300" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center space-x-1.5">
-                <span className="font-extrabold text-sm tracking-tight text-slate-900 group-hover:text-blue-700 transition">
-                  SI-JUKNIS
-                </span>
-                <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
-                  BI
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-500 truncate font-medium">
-                Bank Indonesia Compliance
-              </p>
-            </div>
+          <Link href="/" className="flex items-center group min-w-0" title="PRISMA - Platform Regulasi, Integrasi, Search, Monitoring & Administration Bank Indonesia">
+            <img 
+              src="/prisma-logo-clean.png" 
+              alt="PRISMA Bank Indonesia" 
+              className="h-11 w-auto max-w-[175px] object-contain object-left group-hover:scale-105 transition origin-left"
+            />
           </Link>
 
           {/* Hide Sidebar Button for Desktop */}
@@ -288,43 +267,77 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
         ))}
       </div>
 
-      {/* Footer / Active Project & Role Section */}
+      {/* Footer / Role Switcher Section */}
       <div className="p-3.5 border-t border-slate-200 bg-slate-50/70 space-y-2.5">
-        <div className="flex items-center justify-between mb-1.5 px-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            Project Aktif
-          </span>
-          {memberships.length > 1 && (
+        <div className="relative">
+          <div className="flex items-center justify-between mb-1.5 px-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Akun
+            </span>
             <button
-              onClick={() => setIsProjectSelectorOpen(true)}
-              className="text-[10px] text-slate-400 hover:text-slate-700 transition"
+              onClick={handleResetData}
+              title="Reset data demo ke alur standar"
+              className="text-[10px] text-slate-400 hover:text-slate-700 flex items-center space-x-1 transition"
             >
-              Ganti
+              <RotateCcw className="w-3 h-3" />
+              <span>Reset Data</span>
             </button>
+          </div>
+
+          <button
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="w-full flex items-center justify-between bg-white hover:bg-slate-50 border border-slate-200 p-2 rounded-xl text-left transition shadow-2xs"
+          >
+            <div className="flex items-center space-x-2.5 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold shrink-0">
+                <UserCheck className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-slate-900 truncate">
+                  {ROLE_DEFINITIONS[role]?.label || 'Satker Pemrakarsa'}
+                </div>
+              </div>
+            </div>
+            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition ${dropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {dropdownOpen && (
+            <div className="absolute bottom-full left-0 mb-2 w-full bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150 max-h-80 overflow-y-auto">
+              <div className="px-3 py-2 border-b border-slate-100">
+                <div className="text-xs font-bold text-slate-900">
+                  Simulasi Peran Pengguna
+                </div>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  Uji alur persetujuan dari perspektif unit kerja
+                </p>
+              </div>
+
+              <div className="py-1">
+                {ALLOWED_ROLES.map((r) => {
+                  const def = ROLE_DEFINITIONS[r];
+                  const isSelected = role === r;
+                  return (
+                    <button
+                      key={r}
+                      onClick={() => handleSelectRole(r)}
+                      className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 transition border-b border-slate-50 last:border-b-0 ${
+                        isSelected ? 'bg-blue-50/70 text-blue-900 font-bold' : 'text-slate-700'
+                      }`}
+                    >
+                      <div className="pr-2 min-w-0">
+                        <div className="font-semibold text-slate-900 truncate">{def.label}</div>
+                        <div className="text-[10px] text-slate-500 line-clamp-1">{def.desc}</div>
+                      </div>
+                      {isSelected && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
-
-        <div className="w-full flex items-center space-x-2.5 bg-white border border-slate-200 p-2 rounded-xl shadow-2xs">
-          <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold shrink-0">
-            <Briefcase className="w-3.5 h-3.5" />
-          </div>
-          <div className="min-w-0">
-            <div className="text-xs font-bold text-slate-900 truncate">
-              {activeProject?.hierarchyName || 'Belum ada project'}
-            </div>
-            <div className="text-[10px] text-slate-500 truncate">
-              Role: {activeProject ? (ROLE_DEFINITIONS[activeProject.role]?.label || activeProject.role) : '-'}
-            </div>
-          </div>
-        </div>
-
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center justify-center space-x-1.5 text-[11px] font-semibold text-slate-500 hover:text-rose-600 py-1.5 transition"
-        >
-          <LogOut className="w-3.5 h-3.5" />
-          <span>Keluar</span>
-        </button>
       </div>
     </div>
   );
@@ -340,18 +353,12 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
 
       {/* Mobile Top Navigation Bar */}
       <header className="md:hidden sticky top-0 z-30 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-2xs">
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-lg bg-[#003366] flex items-center justify-center text-white shadow-xs">
-            <Scale className="w-4 h-4 text-amber-300" />
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <span className="font-extrabold text-sm tracking-tight text-slate-900">
-              SI-JUKNIS
-            </span>
-            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
-              BI
-            </span>
-          </div>
+        <Link href="/" className="flex items-center" title="PRISMA Bank Indonesia">
+          <img 
+            src="/prisma-logo-clean.png" 
+            alt="PRISMA Bank Indonesia" 
+            className="h-8 w-auto max-w-[140px] object-contain object-left" 
+          />
         </Link>
 
         <div className="flex items-center space-x-2">
@@ -399,16 +406,6 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
       />
-
-      {/* Project Selector — forced (no close) if no project is active yet */}
-      {isProjectSelectorOpen && (
-        <ProjectSelector
-          memberships={memberships}
-          activeProjectId={activeProject?.hierarchyId}
-          dismissible={!!activeProject}
-          onClose={() => setIsProjectSelectorOpen(false)}
-        />
-      )}
     </>
   );
 }

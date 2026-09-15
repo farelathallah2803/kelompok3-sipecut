@@ -72,14 +72,12 @@ function SearchContent() {
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Kembali ke Dashboard</span>
         </Link>
-        <div className="flex items-center space-x-2">
-          <div className="p-1.5 rounded-lg bg-blue-600 text-white shadow-xs">
-            <Search className="w-4 h-4" />
-          </div>
-          <h1 className="text-xl font-bold text-slate-900">
-            Pencarian Regulasi &amp; Pasal BI
-          </h1>
-        </div>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          Pencarian Regulasi &amp; Pasal BI
+        </h1>
+        <p className="text-xs text-slate-500">
+          Cari ketentuan, klausul, atau pasal dalam basis data regulasi Bank Indonesia.
+        </p>
       </div>
 
       {/* Search Input Box */}
@@ -91,16 +89,19 @@ function SearchContent() {
             value={query}
             onChange={(e) => handleExecuteSearch(e.target.value)}
             placeholder="Ketik kata kunci atau topik (misal: 'larangan surcharge', 'sanksi denda', 'retensi log')..."
-            className="w-full text-xs sm:text-sm text-slate-900 pl-9 pr-8 py-2 bg-transparent focus:outline-hidden placeholder:text-slate-400"
+            className="w-full text-xs sm:text-sm text-slate-900 pl-9 pr-36 py-2 bg-transparent focus:outline-hidden placeholder:text-slate-400"
           />
-          {query && (
-            <button
-              onClick={() => handleExecuteSearch('')}
-              className="absolute right-2 text-slate-400 hover:text-slate-600 p-1"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <div className="absolute right-2 flex items-center space-x-1">
+            {query && (
+              <button
+                onClick={() => handleExecuteSearch('')}
+                className="text-slate-400 hover:text-slate-600 p-1"
+                title="Hapus pencarian"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Quick Suggestion Chips */}
@@ -300,6 +301,7 @@ function SearchContent() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

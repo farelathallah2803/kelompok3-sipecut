@@ -243,6 +243,7 @@ export default function SmartSearchModal({ isOpen, onClose, initialQuery = '' }:
           </Link>
         </div>
       </div>
+
     </div>
   );
 }

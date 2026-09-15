@@ -20,96 +20,178 @@ import {
   Clock,
   Loader2,
   XCircle,
+  Send,
+  ThumbsUp,
+  ThumbsDown,
+  History,
 } from 'lucide-react';
 import { MOCK_REGULATIONS } from '@/data/mockRegulations';
-import { Membership } from '@/types';
-import { getActiveProject } from '@/lib/auth';
-import { listDocuments, reprocessDocument, ProjectDocument } from '@/lib/documentsApi';
+import { getDefaultHierarchyId } from '@/lib/hierarchy';
+import {
+  listDocuments, reprocessDocument, submitDocument, approveDocument, rejectDocument,
+  ProjectDocument,
+} from '@/lib/documentsApi';
 import { usePollDocumentStatus } from '@/hooks/usePollDocumentStatus';
 import UploadDocumentModal from '@/components/documents/UploadDocumentModal';
 
 const STATUS_BADGE: Record<ProjectDocument['status'], { label: string; className: string; icon: React.ElementType }> = {
-  draft:             { label: 'Draft',              className: 'bg-slate-100 text-slate-600 border-slate-200',   icon: Clock },
-  pending:           { label: 'Menunggu',           className: 'bg-slate-100 text-slate-600 border-slate-200',   icon: Clock },
-  processing_l1:     { label: 'Ekstraksi Dokumen',  className: 'bg-blue-50 text-blue-700 border-blue-200',       icon: Loader2 },
-  processing_embed:  { label: 'Membuat Embedding',  className: 'bg-blue-50 text-blue-700 border-blue-200',       icon: Loader2 },
-  ready:             { label: 'Siap Digunakan',     className: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
-  error:             { label: 'Gagal Diproses',     className: 'bg-rose-50 text-rose-700 border-rose-200',       icon: XCircle },
+  draft:              { label: 'Draft',                className: 'bg-slate-100 text-slate-600 border-slate-200',    icon: Clock },
+  pending:            { label: 'Menunggu',             className: 'bg-slate-100 text-slate-600 border-slate-200',    icon: Clock },
+  processing_l1:      { label: 'Ekstraksi Dokumen',    className: 'bg-blue-50 text-blue-700 border-blue-200',        icon: Loader2 },
+  processing_embed:   { label: 'Membuat Embedding',    className: 'bg-blue-50 text-blue-700 border-blue-200',        icon: Loader2 },
+  ready:              { label: 'Siap Digunakan',       className: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
+  error:              { label: 'Gagal Diproses',       className: 'bg-rose-50 text-rose-700 border-rose-200',        icon: XCircle },
+  awaiting_judgment:  { label: 'Menunggu Induk Terbit', className: 'bg-amber-50 text-amber-700 border-amber-200',    icon: Clock },
+  judgment_running:   { label: 'Penilaian AI',         className: 'bg-blue-50 text-blue-700 border-blue-200',        icon: Loader2 },
+  approval_1:         { label: 'Persetujuan Kepala Unit Kerja', className: 'bg-indigo-50 text-indigo-700 border-indigo-200', icon: Clock },
+  approval_2:         { label: 'Persetujuan Kepala Satuan Kerja', className: 'bg-indigo-50 text-indigo-700 border-indigo-200', icon: Clock },
+  approval_3:         { label: 'Persetujuan Divisi Hukum', className: 'bg-indigo-50 text-indigo-700 border-indigo-200', icon: Clock },
+  approval_4:         { label: 'Menunggu Rapat Terbuka', className: 'bg-indigo-50 text-indigo-700 border-indigo-200', icon: Clock },
+  terbit:             { label: 'Terbit',               className: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
+  rejected:           { label: 'Ditolak',              className: 'bg-rose-50 text-rose-700 border-rose-200',        icon: XCircle },
 };
+
+const APPROVAL_STAGES: ProjectDocument['status'][] = ['approval_1', 'approval_2', 'approval_3', 'approval_4'];
 
 function DocumentRow({ doc, onChange }: { doc: ProjectDocument; onChange: (d: ProjectDocument) => void }) {
   usePollDocumentStatus(doc.id, doc.status, onChange);
+  const [showHistory, setShowHistory] = useState(false);
+  const [busy, setBusy] = useState(false);
   const badge = STATUS_BADGE[doc.status];
   const Icon = badge.icon;
-  const isSpinning = doc.status === 'processing_l1' || doc.status === 'processing_embed';
+  const isSpinning = doc.status === 'processing_l1' || doc.status === 'processing_embed' || doc.status === 'judgment_running';
+  const isInApproval = APPROVAL_STAGES.includes(doc.status);
+
+  const runAction = async (fn: () => Promise<ProjectDocument>) => {
+    setBusy(true);
+    try {
+      onChange(await fn());
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Aksi gagal.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
-    <tr className="hover:bg-slate-50/60 transition">
-      <td className="py-2.5 px-3 text-xs font-semibold text-slate-800">{doc.title}</td>
-      <td className="py-2.5 px-3 text-xs text-slate-500">{doc.doc_type_display}</td>
-      <td className="py-2.5 px-3">
-        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-semibold border ${badge.className}`}>
-          <Icon className={`w-3 h-3 ${isSpinning ? 'animate-spin' : ''}`} />
-          {badge.label}
-        </span>
-      </td>
-      <td className="py-2.5 px-3 text-right">
-        {doc.status === 'error' && (
-          <button
-            onClick={async () => onChange(await reprocessDocument(doc.id))}
-            className="text-[11px] font-semibold text-blue-700 hover:text-blue-900 flex items-center gap-1 justify-end w-full"
-          >
-            <RefreshCw className="w-3 h-3" /> Proses Ulang
-          </button>
-        )}
-      </td>
-    </tr>
+    <>
+      <tr className="hover:bg-slate-50/60 transition">
+        <td className="py-2.5 px-3 text-xs font-semibold text-slate-800">{doc.title}</td>
+        <td className="py-2.5 px-3 text-xs text-slate-500">{doc.doc_type_display}</td>
+        <td className="py-2.5 px-3">
+          <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-semibold border ${badge.className}`}>
+            <Icon className={`w-3 h-3 ${isSpinning ? 'animate-spin' : ''}`} />
+            {badge.label}
+          </span>
+        </td>
+        <td className="py-2.5 px-3 text-right">
+          <div className="flex items-center justify-end gap-2">
+            {doc.approvals.length > 0 && (
+              <button
+                onClick={() => setShowHistory((v) => !v)}
+                className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1"
+                title="Riwayat approval"
+              >
+                <History className="w-3 h-3" /> {doc.approvals.length}
+              </button>
+            )}
+            {doc.status === 'error' && (
+              <button
+                disabled={busy}
+                onClick={() => runAction(() => reprocessDocument(doc.id))}
+                className="text-[11px] font-semibold text-blue-700 hover:text-blue-900 flex items-center gap-1 disabled:opacity-50"
+              >
+                <RefreshCw className="w-3 h-3" /> Proses Ulang
+              </button>
+            )}
+            {doc.status === 'ready' && (
+              <button
+                disabled={busy}
+                onClick={() => runAction(() => submitDocument(doc.id))}
+                className="text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-md px-2 py-1 flex items-center gap-1 disabled:opacity-50"
+              >
+                <Send className="w-3 h-3" /> Ajukan Approval
+              </button>
+            )}
+            {isInApproval && (
+              <>
+                <button
+                  disabled={busy}
+                  onClick={() => runAction(() => approveDocument(doc.id))}
+                  className="text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md px-2 py-1 flex items-center gap-1 disabled:opacity-50"
+                  title="Mock approval — belum ada pengecekan role/IAM"
+                >
+                  <ThumbsUp className="w-3 h-3" /> Setujui
+                </button>
+                <button
+                  disabled={busy}
+                  onClick={() => {
+                    const reason = window.prompt('Alasan penolakan (opsional):') || '';
+                    runAction(() => rejectDocument(doc.id, reason));
+                  }}
+                  className="text-[11px] font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-md px-2 py-1 flex items-center gap-1 disabled:opacity-50"
+                >
+                  <ThumbsDown className="w-3 h-3" /> Tolak
+                </button>
+              </>
+            )}
+          </div>
+        </td>
+      </tr>
+      {showHistory && doc.approvals.length > 0 && (
+        <tr>
+          <td colSpan={4} className="px-3 pb-3">
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 space-y-1.5">
+              {doc.approvals.map((a, i) => (
+                <div key={i} className="text-[11px] flex items-center justify-between">
+                  <span className="font-semibold text-slate-700">{a.stage_name}</span>
+                  <span className={a.decision === 'approved' ? 'text-emerald-700' : 'text-rose-700'}>
+                    {a.decision === 'approved' ? 'Disetujui' : 'Ditolak'}
+                  </span>
+                  <span className="text-slate-400">{new Date(a.decided_at).toLocaleDateString('id-ID')}</span>
+                </div>
+              ))}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
 function ProjectDocumentsPanel() {
-  const [activeProject, setActiveProject] = useState<Membership | null>(null);
+  const [hierarchyId, setHierarchyId] = useState<string | null>(null);
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [error, setError] = useState('');
 
-  const loadDocs = (hierarchyId: string) => {
-    listDocuments(hierarchyId).then(setDocuments).catch((e) => setError(e.message));
-  };
-
   useEffect(() => {
-    const project = getActiveProject();
-    setActiveProject(project);
-    if (project) loadDocs(project.hierarchyId);
-
-    const handleProjectChange = () => {
-      const p = getActiveProject();
-      setActiveProject(p);
-      if (p) loadDocs(p.hierarchyId);
-      else setDocuments([]);
-    };
-    window.addEventListener('projectSelected', handleProjectChange);
-    return () => window.removeEventListener('projectSelected', handleProjectChange);
+    getDefaultHierarchyId()
+      .then((id) => {
+        setHierarchyId(id);
+        return listDocuments(id);
+      })
+      .then(setDocuments)
+      .catch((e) => setError(e.message));
   }, []);
 
   const handleDocChange = (updated: ProjectDocument) => {
     setDocuments((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
   };
 
-  if (!activeProject) return null;
-
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-2xs p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-bold text-slate-900">Dokumen Internal Project</h2>
+          <h2 className="text-sm font-bold text-slate-900">Dokumen Internal</h2>
           <p className="text-[11px] text-slate-500">
-            Dokumen kerja project <strong>{activeProject.hierarchyName}</strong> — diproses otomatis dengan OCR/AI setelah diunggah.
+            Diproses otomatis dengan OCR/AI setelah diunggah, lalu melalui alur persetujuan 5 tahap sebelum terbit.
           </p>
         </div>
         <button
           onClick={() => setIsUploadOpen(true)}
-          className="flex items-center space-x-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
+          disabled={!hierarchyId}
+          className="flex items-center space-x-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50"
         >
           <UploadCloud className="w-3.5 h-3.5" />
           <span>Unggah Dokumen</span>
@@ -119,7 +201,7 @@ function ProjectDocumentsPanel() {
       {error && <p className="text-xs text-rose-600">{error}</p>}
 
       {documents.length === 0 ? (
-        <div className="text-center py-8 text-xs text-slate-400">Belum ada dokumen di project ini.</div>
+        <div className="text-center py-8 text-xs text-slate-400">Belum ada dokumen.</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -140,9 +222,9 @@ function ProjectDocumentsPanel() {
         </div>
       )}
 
-      {isUploadOpen && (
+      {isUploadOpen && hierarchyId && (
         <UploadDocumentModal
-          hierarchyId={activeProject.hierarchyId}
+          hierarchyId={hierarchyId}
           onClose={() => setIsUploadOpen(false)}
           onUploaded={(doc) => setDocuments((prev) => [doc, ...prev])}
         />
@@ -249,7 +331,7 @@ export default function RegulationsCatalogPage() {
             <span className="text-xs text-slate-500 font-medium">Total Aturan</span>
             <FileText className="w-4 h-4 text-blue-600" />
           </div>
-          <p className="text-xl font-bold text-slate-900 mt-1">{stats.total.toLocaleString()}</p>
+          <p className="text-xl font-bold text-slate-900 mt-1">{stats.total.toLocaleString('id-ID')}</p>
           <span className="text-[10px] text-slate-400">Database Resmi JDIH</span>
         </div>
 
@@ -258,7 +340,7 @@ export default function RegulationsCatalogPage() {
             <span className="text-xs text-slate-500 font-medium">Status Berlaku</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           </div>
-          <p className="text-xl font-bold text-emerald-600 mt-1">{stats.berlaku.toLocaleString()}</p>
+          <p className="text-xl font-bold text-emerald-600 mt-1">{stats.berlaku.toLocaleString('id-ID')}</p>
           <span className="text-[10px] text-emerald-700/80">Regulasi Aktif</span>
         </div>
 
@@ -272,7 +354,7 @@ export default function RegulationsCatalogPage() {
             <span className="text-xs text-slate-500 font-medium">Moneter</span>
             <Landmark className="w-4 h-4 text-amber-600" />
           </div>
-          <p className="text-xl font-bold text-amber-600 mt-1">{stats.moneter.toLocaleString()}</p>
+          <p className="text-xl font-bold text-amber-600 mt-1">{stats.moneter.toLocaleString('id-ID')}</p>
           <span className="text-[10px] text-slate-400">Operasi, Valas & DHE</span>
         </div>
 
@@ -286,7 +368,7 @@ export default function RegulationsCatalogPage() {
             <span className="text-xs text-slate-500 font-medium">Sistem Pembayaran</span>
             <CreditCard className="w-4 h-4 text-blue-600" />
           </div>
-          <p className="text-xl font-bold text-blue-600 mt-1">{stats.sp.toLocaleString()}</p>
+          <p className="text-xl font-bold text-blue-600 mt-1">{stats.sp.toLocaleString('id-ID')}</p>
           <span className="text-[10px] text-slate-400">PJP, PIP, QRIS, PUR</span>
         </div>
 
@@ -300,7 +382,7 @@ export default function RegulationsCatalogPage() {
             <span className="text-xs text-slate-500 font-medium">Makroprudensial</span>
             <TrendingUp className="w-4 h-4 text-indigo-600" />
           </div>
-          <p className="text-xl font-bold text-indigo-600 mt-1">{stats.makro.toLocaleString()}</p>
+          <p className="text-xl font-bold text-indigo-600 mt-1">{stats.makro.toLocaleString('id-ID')}</p>
           <span className="text-[10px] text-slate-400">Likuiditas & RIM</span>
         </div>
       </div>
@@ -416,7 +498,7 @@ export default function RegulationsCatalogPage() {
       {/* Result Count and Summary */}
       <div className="flex items-center justify-between text-xs text-slate-500 px-1">
         <span>
-          Menampilkan <strong>{filtered.length > 0 ? (currentPageClamped - 1) * pageSize + 1 : 0} - {Math.min(currentPageClamped * pageSize, filtered.length)}</strong> dari <strong>{filtered.length.toLocaleString()}</strong> regulasi terfilter
+          Menampilkan <strong>{filtered.length > 0 ? (currentPageClamped - 1) * pageSize + 1 : 0} - {Math.min(currentPageClamped * pageSize, filtered.length)}</strong> dari <strong>{filtered.length.toLocaleString('id-ID')}</strong> regulasi terfilter
         </span>
         <span>Halaman {currentPageClamped} dari {totalPages}</span>
       </div>
@@ -615,7 +697,7 @@ export default function RegulationsCatalogPage() {
       {filtered.length > pageSize && (
         <div className="flex items-center justify-between bg-white px-4 py-3 border border-slate-200 rounded-xl shadow-2xs">
           <div className="text-xs text-slate-500">
-            Halaman <strong>{currentPageClamped}</strong> dari <strong>{totalPages}</strong> ({filtered.length.toLocaleString()} total aturan)
+            Halaman <strong>{currentPageClamped}</strong> dari <strong>{totalPages}</strong> ({filtered.length.toLocaleString('id-ID')} total aturan)
           </div>
 
           <div className="flex items-center space-x-1.5">

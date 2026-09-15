@@ -13,7 +13,7 @@ export function setToken(token: string | null): void {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
-/** fetch() wrapper that attaches the JWT and resolves against API_BASE. */
+/** fetch() wrapper that attaches the JWT (if any) and resolves against API_BASE. */
 export async function authFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const token = getToken();
   const headers = new Headers(init.headers);

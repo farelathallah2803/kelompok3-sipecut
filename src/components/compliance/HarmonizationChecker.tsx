@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertOctagon,
   CheckCircle2,
@@ -13,7 +13,7 @@ import {
   Briefcase,
 } from 'lucide-react';
 import { HarmonizationSummary, HarmonizationIssue, PetunjukTeknisDraft } from '@/types';
-import { getActiveProject } from '@/lib/auth';
+import { getDefaultHierarchyId } from '@/lib/hierarchy';
 import { runRealHarmonization, submitHarmonizationFeedback, PipelineStep, PipelineStepState } from '@/lib/harmonizationApi';
 import PipelineProgress from './PipelineProgress';
 
@@ -33,9 +33,8 @@ function defaultQueryText(draft: PetunjukTeknisDraft): string {
 }
 
 export default function HarmonizationChecker({ draft, onAnalysisUpdated }: HarmonizationCheckerProps) {
-  const activeProject = getActiveProject();
-  const hierarchyId = draft.hierarchyId || activeProject?.hierarchyId;
-
+  // Login is disabled — every draft's harmonization check runs against the one shared workspace.
+  const [hierarchyId, setHierarchyId] = useState<string | undefined>(undefined);
   const [queryText, setQueryText] = useState(() => defaultQueryText(draft));
   const [summary, setSummary] = useState<HarmonizationSummary | null>(
     draft.complianceSummary?.mode === 'real' ? draft.complianceSummary : null
@@ -46,6 +45,10 @@ export default function HarmonizationChecker({ draft, onAnalysisUpdated }: Harmo
   const [filterSeverity, setFilterSeverity] = useState<string>('all');
   const [feedbackTarget, setFeedbackTarget] = useState<HarmonizationIssue | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    getDefaultHierarchyId().then(setHierarchyId).catch(() => setError('Gagal memuat workspace dokumen.'));
+  }, []);
 
   const handleRun = async () => {
     if (!hierarchyId || !queryText.trim()) return;
@@ -101,11 +104,10 @@ export default function HarmonizationChecker({ draft, onAnalysisUpdated }: Harmo
   if (!hierarchyId) {
     return (
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center space-y-2">
-        <Briefcase className="w-9 h-9 text-slate-300 mx-auto" />
-        <h3 className="text-sm font-bold text-slate-800">Belum Ada Project Dipilih</h3>
+        <Briefcase className="w-9 h-9 text-slate-300 mx-auto animate-pulse" />
+        <h3 className="text-sm font-bold text-slate-800">Memuat Workspace...</h3>
         <p className="text-xs text-slate-500 max-w-sm mx-auto">
-          Uji Harmonisasi membandingkan teks ini terhadap dokumen yang sudah diproses dalam satu project.
-          Pilih project aktif terlebih dahulu dari menu samping.
+          Uji Harmonisasi membandingkan teks ini terhadap dokumen yang sudah diproses di workspace.
         </p>
       </div>
     );
@@ -137,9 +139,6 @@ export default function HarmonizationChecker({ draft, onAnalysisUpdated }: Harmo
             <Scale className="w-5 h-5 text-blue-700" />
             <h3 className="text-base font-bold text-slate-900">Uji Harmonisasi Regulasi</h3>
           </div>
-          <span className="text-[11px] text-slate-500">
-            Project: <strong className="text-slate-700">{activeProject?.hierarchyName}</strong>
-          </span>
         </div>
         <textarea
           value={queryText}

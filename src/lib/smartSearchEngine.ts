@@ -1,5 +1,6 @@
 import { Regulation, PetunjukTeknisDraft, RegulationType } from '@/types';
 import { MOCK_REGULATIONS } from '@/data/mockRegulations';
+import { getDrafts } from './storage';
 
 export interface SearchResultArticle {
   id: string;
@@ -195,9 +196,62 @@ export function searchAllRegulations(rawQuery: string): SmartSearchResponse {
     }
   }
 
-  // ponytail: Juknis-draft scanning disabled — drafts now live in the backend (async,
-  // project-scoped) instead of localStorage, and this search path is synchronous.
-  // Add back once "Pencarian Cerdas AI" is wired to fetch drafts from draftsApi.ts.
+  // 2. Scan Corpus Petunjuk Teknis (Juknis Drafts)
+  try {
+    const drafts = getDrafts();
+    for (const draft of drafts) {
+      for (const chap of (draft.chapters || [])) {
+        for (const art of (chap.articles || [])) {
+          let score = 0;
+          const reasons: string[] = [];
+          const fullText = `${draft.code} ${draft.title} ${chap.chapterNumber} ${art.articleNumber} ${art.title} ${art.content} ${art.explanation || ''}`.toLowerCase();
+
+          if (fullText.includes(query)) {
+            score += 40;
+            reasons.push('Kecocokan teks klausul Juknis');
+          }
+
+          let matchedWordCount = 0;
+          for (const w of queryWords) {
+            if (fullText.includes(w)) {
+              matchedWordCount++;
+              score += 8;
+            }
+          }
+
+          for (const [, concept] of Object.entries(LEGAL_CONCEPTS)) {
+            const queryMatchesConcept = concept.terms.some(t => query.includes(t));
+            if (queryMatchesConcept && concept.relatedArticleKeywords.some(k => fullText.includes(k))) {
+              score += concept.weight * 5;
+              reasons.push('Korelasi materi Juknis');
+            }
+          }
+
+          if (score > 15) {
+            matchedArticles.push({
+              id: `${draft.id}-${chap.id}-${art.id}`,
+              regulationId: draft.id,
+              regulationNumber: draft.code,
+              regulationTitle: draft.title,
+              regulationType: 'JUKNIS',
+              year: draft.year || 2025,
+              sector: draft.category,
+              jdihUrl: `/draft/${draft.id}`,
+              articleNumber: `${chap.chapterNumber} - ${art.articleNumber}`,
+              articleTitle: art.title,
+              content: art.content,
+              keyProhibitions: art.explanation ? [art.explanation] : undefined,
+              relevanceScore: score,
+              matchedReason: reasons.join(' • ') || 'Klausul juknis terkait',
+              source: 'juknis'
+            });
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Error scanning juknis drafts for search', e);
+  }
 
   // Sort by relevance score descending
   matchedArticles.sort((a, b) => b.relevanceScore - a.relevanceScore);

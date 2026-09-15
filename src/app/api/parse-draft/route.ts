@@ -247,6 +247,9 @@ function createFallbackDraft(fileName: string, textContent: string): any {
   };
 }
 
+const uploadBufferMap = new Map<string, { buffer: Buffer; currentOffset: number }>();
+const GOOGLE_REQUIRED_GRANULARITY = 8 * 1024 * 1024; // 8,388,608 bytes (wajib kelipatan 8MB dari Google Files API untuk chunk non-final)
+
 export async function POST(req: Request) {
   try {
     const apiKey = getGeminiApiKey();
@@ -311,11 +314,10 @@ export async function POST(req: Request) {
       });
     }
 
-    // 2. ACTION: Upload Chunk Berkas ke Google Files API via Server Proxy (Memotong Batasan 4.5MB Vercel)
+    // 2. ACTION: Upload Chunk Berkas ke Google Files API via Server Proxy (Memotong Batasan 4.5MB Vercel & Mengakumulasi 8MB Granularity Google)
     if (action === 'upload-chunk') {
       const formData = await req.formData();
       const uploadUrl = formData.get('uploadUrl') as string;
-      const offset = (formData.get('offset') as string) || '0';
       const isFinal = (formData.get('isFinal') as string) === 'true';
       const chunkFile = formData.get('chunk') as File | null;
 
@@ -329,32 +331,71 @@ export async function POST(req: Request) {
       const arrayBuffer = await chunkFile.arrayBuffer();
       const chunkBuffer = Buffer.from(arrayBuffer);
 
-      const chunkRes = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Length': chunkBuffer.length.toString(),
-          'X-Goog-Upload-Offset': offset,
-          'X-Goog-Upload-Command': isFinal ? 'upload, finalize' : 'upload'
-        },
-        body: new Uint8Array(chunkBuffer)
-      });
-
-      if (!chunkRes.ok) {
-        const errText = await chunkRes.text();
-        return NextResponse.json(
-          { error: `Gagal mengunggah chunk ke Google Files (HTTP ${chunkRes.status}): ${errText.slice(0, 200)}` },
-          { status: chunkRes.status }
-        );
+      let session = uploadBufferMap.get(uploadUrl);
+      if (!session) {
+        session = { buffer: Buffer.alloc(0), currentOffset: 0 };
+        uploadBufferMap.set(uploadUrl, session);
       }
 
+      session.buffer = Buffer.concat([session.buffer, chunkBuffer]);
+
+      // Mengirimkan blok kelipatan 8MB ke Google Files API jika buffer server sudah mencapai 8MB
+      while (session.buffer.length >= GOOGLE_REQUIRED_GRANULARITY) {
+        const blockToUpload = session.buffer.subarray(0, GOOGLE_REQUIRED_GRANULARITY);
+        session.buffer = session.buffer.subarray(GOOGLE_REQUIRED_GRANULARITY);
+
+        const blockRes = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Length': GOOGLE_REQUIRED_GRANULARITY.toString(),
+            'X-Goog-Upload-Offset': session.currentOffset.toString(),
+            'X-Goog-Upload-Command': 'upload'
+          },
+          body: new Uint8Array(blockToUpload)
+        });
+
+        if (!blockRes.ok) {
+          const errText = await blockRes.text();
+          uploadBufferMap.delete(uploadUrl);
+          return NextResponse.json(
+            { error: `Gagal mengunggah blok 8MB ke Google Files (HTTP ${blockRes.status}): ${errText.slice(0, 200)}` },
+            { status: blockRes.status }
+          );
+        }
+
+        session.currentOffset += GOOGLE_REQUIRED_GRANULARITY;
+      }
+
+      // Jika ini adalah potongan (chunk) terakhir dari klien
       if (isFinal) {
-        const resText = await chunkRes.text();
+        const finalBuffer = session.buffer;
+        const finalRes = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Length': finalBuffer.length.toString(),
+            'X-Goog-Upload-Offset': session.currentOffset.toString(),
+            'X-Goog-Upload-Command': 'upload, finalize'
+          },
+          body: new Uint8Array(finalBuffer)
+        });
+
+        uploadBufferMap.delete(uploadUrl);
+
+        if (!finalRes.ok) {
+          const errText = await finalRes.text();
+          return NextResponse.json(
+            { error: `Gagal finalisasi berkas di Google Files (HTTP ${finalRes.status}): ${errText.slice(0, 200)}` },
+            { status: finalRes.status }
+          );
+        }
+
+        const resText = await finalRes.text();
         let fileInfo: any;
         try {
           fileInfo = JSON.parse(resText.trim().replace(/^\uFEFF/, ''));
         } catch {
           return NextResponse.json(
-            { error: `Google Files API mengembalikan respons bukan JSON (${chunkRes.status}): ${resText.slice(0, 150)}` },
+            { error: `Google Files API mengembalikan respons bukan JSON (${finalRes.status}): ${resText.slice(0, 150)}` },
             { status: 500 }
           );
         }

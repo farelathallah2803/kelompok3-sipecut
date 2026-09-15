@@ -164,9 +164,9 @@ export const INITIAL_DRAFTS: PetunjukTeknisDraft[] = [
   },
   {
     id: 'draft-002',
-    workflowType: 'padg',
-    code: 'NOMOR 27/12/PADG/2025',
-    title: 'Rancangan Peraturan Anggota Dewan Gubernur tentang Pedoman Pengoperasian Infrastruktur Layanan Transaksi Ritel Seketika BI-FAST',
+    workflowType: 'juknis',
+    code: 'NOMOR 2/JUKNIS/INTERNAL/DTI/2025',
+    title: 'Rancangan Petunjuk Teknis Tata Cara Pemeliharaan dan Pengoperasian Infrastruktur Server Layanan Transaksi Ritel Seketika BI-FAST',
     templateType: 'templat_2',
     isConfidential: true,
     scope: 'INTERNAL',
@@ -175,7 +175,7 @@ export const INITIAL_DRAFTS: PetunjukTeknisDraft[] = [
     category: 'Manajemen Risiko & Tata Kelola',
     unitKerja: 'Departemen Teknologi Informasi (DTI)',
     proposerName: 'Siti Rahmadani',
-    currentStage: 'padg_legal_closing',
+    currentStage: 'juknis_evaluasi_dmst',
     status: 'in_review',
     createdAt: '2025-10-15T09:00:00Z',
     updatedAt: '2025-12-28T16:45:00Z',
@@ -234,12 +234,12 @@ export const INITIAL_DRAFTS: PetunjukTeknisDraft[] = [
     reviewNotes: [
       {
         id: 'rev-201',
-        stage: 'padg_legal_review',
+        stage: 'juknis_reviu_teknis',
         reviewerRole: 'dhuk_legal',
         reviewerName: 'Sarah Wijaya, S.H., LL.M.',
         department: 'Departemen Hukum (DHk)',
         decision: 'approve',
-        notes: 'Legal review substansi selesai. Norma aturan selaras dengan PBI No. 23/6/PBI/2021 dan hierarki hukum terpenuhi. Sesuai tata kelola PADG, tahapan langsung berlanjut ke Legal Closing (skip harmonisasi antarkementerian).',
+        notes: 'Hasil Reviu Teknis: Format naskah telah memenuhi Templat 2 Lampiran X PADG Intern No. 66 Tahun 2025. Diteruskan ke evaluasi tata kelola DMST.',
         createdAt: '2025-12-10T09:15:00Z'
       }
     ],
@@ -249,25 +249,25 @@ export const INITIAL_DRAFTS: PetunjukTeknisDraft[] = [
         timestamp: '2025-10-15T09:00:00Z',
         actor: 'Siti Rahmadani',
         role: 'Drafter Unit Kerja',
-        action: 'Penyusunan R-PADG Infrastruktur Transaksi BI-FAST',
-        stage: 'padg_legal_review'
+        action: 'Penyusunan Juknis Pemeliharaan Server BI-FAST',
+        stage: 'juknis_penyusunan'
       },
       {
         id: 'log-t2-2',
         timestamp: '2025-12-10T09:15:00Z',
         actor: 'Sarah Wijaya, S.H., LL.M.',
         role: 'DHk Legal Reviewer',
-        action: 'Persetujuan Legal Review DHk',
-        stage: 'padg_legal_review',
-        details: 'Draft disetujui untuk proses Legal Closing oleh Tim Perancang Regulasi DHk.'
+        action: 'Persetujuan Reviu Teknis Terpadu',
+        stage: 'juknis_reviu_teknis',
+        details: 'Draft disetujui untuk proses evaluasi tata kelola oleh DMST.'
       }
     ]
   },
   {
     id: 'draft-003',
-    workflowType: 'pbi',
-    code: 'NOMOR 27/3/PBI/2025',
-    title: 'Rancangan Peraturan Bank Indonesia tentang Penyelenggaraan dan Tata Kelola Inovasi Teknologi Sektor Keuangan',
+    workflowType: 'juknis',
+    code: 'NOMOR 1/JUKNIS/EKSTERNAL/DKSP/2025',
+    title: 'Rancangan Petunjuk Teknis Penjelasan Standar Terbuka Layanan Antarmuka (SNAP) bagi Penyelenggara Jasa Pembayaran',
     templateType: 'templat_3',
     isConfidential: false,
     scope: 'EKSTERNAL',
@@ -276,49 +276,49 @@ export const INITIAL_DRAFTS: PetunjukTeknisDraft[] = [
     category: 'Sistem Pembayaran',
     unitKerja: 'Departemen Kebijakan Sistem Pembayaran (DKSP)',
     proposerName: 'Dimas Wicaksono',
-    currentStage: 'pbi_harmonisasi',
+    currentStage: 'juknis_persetujuan_adg',
     status: 'in_review',
     createdAt: '2025-12-01T13:00:00Z',
     updatedAt: '2025-12-14T10:20:00Z',
-    foreword: 'Peraturan Bank Indonesia ini diterbitkan sebagai payung hukum utama penyelenggaraan inovasi teknologi sektor keuangan, kerangka regulatory sandbox, dan perlindungan konsumen di Indonesia.',
+    foreword: 'Petunjuk teknis ini diterbitkan sebagai pedoman penjelasan teknis (Templat 3) bagi Penyelenggara Jasa Pembayaran dalam mengimplementasikan Standar Nasional Open API Pembayaran (SNAP).',
     validation: {
       place: 'Jakarta',
       date: '2025-12-14',
       effectiveDate: '2026-01-01',
-      officialName: 'Perry Warjiyo',
-      officialPosition: 'Gubernur Bank Indonesia',
-      rank: 'Gubernur'
+      officialName: 'Filianingsih Hendrata',
+      officialPosition: 'Kepala Departemen Kebijakan Sistem Pembayaran',
+      rank: 'Direktur Eksekutif'
     },
     revocations: [],
     generalProvisions: {
-      background: 'Untuk memfasilitasi perkembangan ekosistem inovasi teknologi sektor keuangan yang aman, berdaya saing, dan selaras dengan standar regulasi internasional serta undang-undang nasional.',
+      background: 'Untuk memfasilitasi interkoneksi dan interoperabilitas sistem pembayaran yang aman dan handal, diperlukan petunjuk teknis penjelasan eksternal mengenai spesifikasi arsitektur SNAP.',
       legalBases: [
-        'UU No. 23 Tahun 1999 tentang Bank Indonesia',
-        'UU No. 4 Tahun 2023 tentang P2SK',
-        'PBI No. 23/6/PBI/2021'
+        'PBI No. 23/6/PBI/2021',
+        'PADG No. 23/15/PADG/2021',
+        'PADG Intern No. 66 Tahun 2025'
       ],
-      purpose: 'Menyediakan landasan regulasi yang komprehensif bagi pelaku ITSK, pengawasan berbasis risiko, dan mekanisme regulatory sandbox.',
+      purpose: 'Menyediakan panduan teknis implementasi API SNAP bagi PJP dan pengembang eksternal.',
       definitions: [
         {
           id: 'def-t3-1',
-          term: 'Inovasi Teknologi Sektor Keuangan (ITSK)',
-          meaning: 'Inovasi berbasis teknologi yang berdampak pada produk, layanan, dan model bisnis di sektor keuangan.'
+          term: 'Standar Nasional Open API Pembayaran (SNAP)',
+          meaning: 'Standar nasional yang ditetapkan Bank Indonesia mencakup standar teknis dan keamanan Open API.'
         }
       ],
-      scope: 'Penyelenggara teknologi finansial, perizinan, pengawasan kepatuhan, tata kelola data, dan perlindungan konsumen nasional.'
+      scope: 'Penyelenggara Jasa Pembayaran, verifikasi pengujian, manajemen persetujuan akses API, dan penanganan insiden antarmuka.'
     },
     chapters: [
       {
         id: 'chap-t3-1',
         chapterNumber: 'BAB II',
-        title: 'RUANG LINGKUP PENYELENGGARAAN DAN PERIZINAN ITSK',
+        title: 'RUANG LINGKUP IMPLEMENTASI SPESIFIKASI API SNAP',
         articles: [
           {
             id: 'art-t3-1',
-            articleNumber: 'Pasal 4',
-            title: 'Kewajiban Perizinan Penyelenggara',
-            content: 'Setiap pihak yang menyelenggarakan kegiatan ITSK wajib memperoleh izin atau penetapan dari Bank Indonesia sesuai dengan kategori klasifikasi aktivitas.',
-            explanation: 'Ketentuan payung hukum mengikat seluruh entitas eksternal.'
+            articleNumber: 'Bagian 1',
+            title: 'Kewajiban Pengujian Kompatibilitas',
+            content: 'Setiap PJP yang menghubungkan antarmuka pembayaran wajib melalui proses Sandbox Uji Coba Terbatas sebelum integrasi ke jaringan produksi.',
+            explanation: 'Ketentuan teknis operasional bagi pihak eksternal.'
           }
         ]
       }
@@ -326,20 +326,20 @@ export const INITIAL_DRAFTS: PetunjukTeknisDraft[] = [
     attachments: [
       {
         id: 'att-t3-1',
-        title: 'Matriks Klasifikasi Klaster Inovasi Sektor Keuangan',
+        title: 'Matriks Payload Error Code dan HTTP Response SNAP',
         type: 'table',
-        content: 'Klaster payment, market aggregator, wealthtech, dan scoring credit data.'
+        content: 'Daftar kode status 200, 400, 401, 500 serta format payload respon JSON baku.'
       }
     ],
     reviewNotes: [
       {
         id: 'rev-301',
-        stage: 'pbi_legal_review',
-        reviewerRole: 'dhuk_legal',
-        reviewerName: 'Dr. Bambang Kusumo, S.H., M.H.',
-        department: 'Departemen Hukum (DHk)',
+        stage: 'juknis_pembahasan_rdg',
+        reviewerRole: 'sekretariat_rdg',
+        reviewerName: 'Sekretariat Dewan Gubernur',
+        department: 'Sekretariat RDG',
         decision: 'approve',
-        notes: 'Hasil telaah hukum: Draft R-PBI telah memenuhi kaidah pembentukan peraturan perundang-undangan UU BI & UU P2SK. Diteruskan ke forum Harmonisasi bersama Kementerian Hukum & HAM dan Kementerian Keuangan.',
+        notes: 'Hasil Pembahasan RDG: Pokok-pokok petunjuk teknis telah disetujui dalam Rapat Dewan Gubernur. Diteruskan ke ADG Pembina untuk pengesahan.',
         createdAt: '2025-12-15T11:00:00Z'
       }
     ],
@@ -349,17 +349,17 @@ export const INITIAL_DRAFTS: PetunjukTeknisDraft[] = [
         timestamp: '2025-12-01T13:00:00Z',
         actor: 'Dimas Wicaksono',
         role: 'Drafter Satker',
-        action: 'Penyusunan R-PBI Tata Kelola Inovasi Teknologi',
-        stage: 'pbi_legal_review'
+        action: 'Penyusunan Juknis Eksternal SNAP',
+        stage: 'juknis_penyusunan'
       },
       {
         id: 'log-t3-2',
         timestamp: '2025-12-15T11:00:00Z',
-        actor: 'Dr. Bambang Kusumo, S.H., M.H.',
-        role: 'DHk Legal Reviewer',
-        action: 'Legal Review Disetujui',
-        stage: 'pbi_legal_review',
-        details: 'Diteruskan ke tahap Harmonisasi bersama Kemenkum dan Kemenkeu.'
+        actor: 'Sekretariat Dewan Gubernur',
+        role: 'Sekretariat RDG',
+        action: 'Persetujuan Pembahasan RDG',
+        stage: 'juknis_pembahasan_rdg',
+        details: 'Diteruskan untuk penandatanganan pengesahan oleh ADG Pembina.'
       }
     ]
   }

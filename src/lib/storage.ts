@@ -14,7 +14,7 @@ import {
 import { INITIAL_DRAFTS } from '@/data/mockDrafts';
 import { runHarmonizationAnalysis } from './harmonizationEngine';
 
-const STORAGE_KEY = 'juknis_tracker_drafts_v5';
+const STORAGE_KEY = 'juknis_tracker_drafts_v7';
 const ROLE_KEY = 'juknis_active_role_v4';
 
 export const PBI_STAGES: PBIWorkflowStage[] = [
@@ -175,9 +175,10 @@ export function getDrafts(): PetunjukTeknisDraft[] {
       return seeded;
     }
     const parsed: PetunjukTeknisDraft[] = JSON.parse(data);
-    return parsed.map(d => ({
+    const juknisDrafts = parsed.filter(d => (d.workflowType || getWorkflowType(d)) === 'juknis');
+    return juknisDrafts.map(d => ({
       ...d,
-      workflowType: getWorkflowType(d),
+      workflowType: 'juknis',
       typography: d.typography || { ...DEFAULT_BI_TYPOGRAPHY }
     }));
   } catch (e) {

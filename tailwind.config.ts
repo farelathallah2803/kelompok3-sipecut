@@ -1,4 +1,4 @@
-﻿import type { Config } from "tailwindcss";
+import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: [
@@ -8,6 +8,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Frutiger', 'Fruttiger', 'Frutiger Linotype', 'Segoe UI', 'system-ui', 'sans-serif'],
+      },
       colors: {
         bi: {
           navy: "#0A2540",

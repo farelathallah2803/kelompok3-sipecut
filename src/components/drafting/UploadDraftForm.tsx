@@ -17,7 +17,7 @@ import {
   Sparkles,
   Search
 } from 'lucide-react';
-import { PetunjukTeknisDraft, WorkflowRegulationType, UploadedDraftFile } from '@/types';
+import { PetunjukTeknisDraft, WorkflowRegulationType, UploadedDraftFile, JuknisTemplateType } from '@/types';
 import { saveDraft, getActiveRole } from '@/lib/storage';
 import { MOCK_REGULATIONS } from '@/data/mockRegulations';
 
@@ -27,6 +27,7 @@ export default function UploadDraftForm() {
 
   // Form states
   const [workflowType, setWorkflowType] = useState<WorkflowRegulationType>('juknis');
+  const [templateType, setTemplateType] = useState<JuknisTemplateType>('templat_1');
   const [title, setTitle] = useState('');
   const [unitKerja, setUnitKerja] = useState('Departemen Kebijakan Sistem Pembayaran (DKSP)');
   const [rubrikSatker, setRubrikSatker] = useState('DKSP');
@@ -150,7 +151,7 @@ export default function UploadDraftForm() {
       code: computedCode,
       title: title.trim(),
       workflowType: 'juknis',
-      templateType: 'templat_1',
+      templateType,
       isConfidential,
       scope,
       rubrikSatker,
@@ -238,7 +239,7 @@ export default function UploadDraftForm() {
             <span>Kembali ke Monitoring</span>
           </Link>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            Pengajuan Berkas Rancangan Regulasi
+            Pengajuan Berkas Rancangan Petunjuk Teknis (Juknis)
           </h1>
         </div>
       </div>
@@ -251,26 +252,105 @@ export default function UploadDraftForm() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Step 1: Regulation Type Selection */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs space-y-3">
+        {/* Step 1: Format Naskah & Alur Persetujuan Juknis */}
+        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs space-y-4">
           <div className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-            1. Jenis Regulasi &amp; Alur Persetujuan
+            1. Klasifikasi &amp; Format Naskah Petunjuk Teknis
           </div>
 
-          <div className="p-4 rounded-xl border-2 border-blue-600 bg-blue-50/40 shadow-xs">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <span className="text-sm font-black text-blue-950">Petunjuk Teknis / Perubahan (Juknis)</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 border border-blue-200">
-                  Standar Baku BI
-                </span>
-              </div>
-              <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />
+          {/* Lingkup Juknis: Internal vs Eksternal */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-2">
+              Lingkup Sasaran Ketentuan
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setScope('INTERNAL')}
+                className={`p-3.5 rounded-xl border-2 text-left transition ${
+                  scope === 'INTERNAL'
+                    ? 'border-blue-600 bg-blue-50/50 shadow-2xs'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-slate-900">Juknis Internal BI</span>
+                  {scope === 'INTERNAL' && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Petunjuk teknis dan prosedur operasional bagi satuan kerja di lingkungan internal Bank Indonesia.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setScope('EKSTERNAL')}
+                className={`p-3.5 rounded-xl border-2 text-left transition ${
+                  scope === 'EKSTERNAL'
+                    ? 'border-emerald-600 bg-emerald-50/50 shadow-2xs'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-slate-900">Juknis Eksternal BI</span>
+                  {scope === 'EKSTERNAL' && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Petunjuk teknis pelaksanaan kebijakan bagi industri, penyelenggara sistem pembayaran, atau publik.
+                </p>
+              </button>
             </div>
-            
-            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              Alur 6 Tahap Tata Kelola: Satker Pemrakarsa &rarr; Reviu Teknis Terpadu (DHk, DMR, DAI) &rarr; Evaluasi Tata Kelola (DMST) &rarr; Pembahasan RDG &rarr; Persetujuan ADG Pembina &rarr; Publikasi Resmi oleh DHk.
-            </p>
+          </div>
+
+          {/* Format Templat Juknis */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-2">
+              Pilihan Format Templat Naskah
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <button
+                type="button"
+                onClick={() => setTemplateType('templat_1')}
+                className={`p-3 rounded-lg border text-left transition ${
+                  templateType === 'templat_1'
+                    ? 'border-blue-600 bg-blue-50/40 text-blue-950 font-semibold shadow-2xs'
+                    : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                }`}
+              >
+                <div className="text-xs font-bold">Templat 1</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">Prosedur Kerja &amp; Tupoksi</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTemplateType('templat_2')}
+                className={`p-3 rounded-lg border text-left transition ${
+                  templateType === 'templat_2'
+                    ? 'border-blue-600 bg-blue-50/40 text-blue-950 font-semibold shadow-2xs'
+                    : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                }`}
+              >
+                <div className="text-xs font-bold">Templat 2</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">Manual Operasional / Sistem</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTemplateType('templat_3')}
+                className={`p-3 rounded-lg border text-left transition ${
+                  templateType === 'templat_3'
+                    ? 'border-blue-600 bg-blue-50/40 text-blue-950 font-semibold shadow-2xs'
+                    : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                }`}
+              >
+                <div className="text-xs font-bold">Templat 3</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">Penjelasan Ketentuan / Industri</div>
+              </button>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600 leading-relaxed">
+            <span className="font-semibold text-slate-800">Alur 6 Tahap Tata Kelola:</span> Satker Pemrakarsa &rarr; Reviu Teknis Terpadu (DHk, DMR, DAI) &rarr; Evaluasi Tata Kelola (DMST) &rarr; Pembahasan RDG &rarr; Persetujuan ADG Pembina &rarr; Publikasi Resmi oleh DHk.
           </div>
         </div>
 
@@ -343,7 +423,7 @@ export default function UploadDraftForm() {
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Judul Rancangan Regulasi / Petunjuk Teknis <span className="text-rose-500">*</span>
+                Judul Petunjuk Teknis (Juknis) <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -556,7 +636,7 @@ export default function UploadDraftForm() {
                 value={background}
                 onChange={(e) => setBackground(e.target.value)}
                 rows={3}
-                placeholder="Uraikan latar belakang urgensi pengajuan regulasi ini..."
+                placeholder="Uraikan latar belakang urgensi pengajuan petunjuk teknis ini..."
                 className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
@@ -578,7 +658,7 @@ export default function UploadDraftForm() {
             className="px-5 py-2.5 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition flex items-center space-x-1.5 shadow-xs disabled:opacity-50"
           >
             <Send className="w-3.5 h-3.5" />
-            <span>{isSubmitting ? 'Memproses Pengajuan...' : 'Kirim Pengajuan Naskah'}</span>
+            <span>{isSubmitting ? 'Memproses Pengajuan...' : 'Kirim Pengajuan Juknis'}</span>
           </button>
         </div>
       </form>

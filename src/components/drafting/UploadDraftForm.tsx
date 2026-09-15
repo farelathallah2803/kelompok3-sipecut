@@ -134,54 +134,33 @@ export default function UploadDraftForm() {
 
     try {
       let result: any;
-      const CHUNK_SIZE = 1 * 1024 * 1024; // 1 MB per chunk (pasti aman 100% dari batas payload Vercel Serverless)
+      const CHUNK_SIZE = 2 * 1024 * 1024; // 2 MB per chunk (aman dari batas 4.5MB Vercel)
 
       if (file.size > CHUNK_SIZE) {
-        // 1. Inisiasi sesi upload chunk di Google Files API via server proxy
-        setAnalysisStatus(`Mempersiapkan sesi unggah berkas besar (${(file.size / (1024 * 1024)).toFixed(1)} MB)...`);
-        const initRes = await fetch('/api/parse-draft?action=init-chunk-upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fileName: file.name,
-            fileSize: file.size,
-            mimeType: file.type || 'application/pdf'
-          })
-        });
-
-        const rawInitText = await initRes.text();
-        let initData: any;
-        try {
-          initData = JSON.parse(rawInitText.trim().replace(/^\uFEFF/, ''));
-        } catch {
-          throw new Error(`Gagal menginisiasi sesi unggah naskah (HTTP ${initRes.status}).`);
-        }
-
-        if (!initRes.ok || !initData.uploadUrl) {
-          throw new Error(initData.error || 'Gagal membuat sesi unggah berkas naskah.');
-        }
-
-        const uploadUrl = initData.uploadUrl;
+        const uploadId = `up_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-        let finalFileUri = '';
 
-        // 2. Unggah berkas potongan per potongan (chunk by chunk)
         for (let i = 0; i < totalChunks; i++) {
           const start = i * CHUNK_SIZE;
           const end = Math.min(file.size, (i + 1) * CHUNK_SIZE);
-          const isFinal = (i === totalChunks - 1);
           const chunkBlob = file.slice(start, end);
 
           const percent = Math.round((end / file.size) * 100);
-          setAnalysisStatus(`Mengunggah naskah (${(file.size / (1024 * 1024)).toFixed(1)} MB)... Bagian ${i + 1} dari ${totalChunks} (${percent}% selesai)`);
+          if (i === totalChunks - 1) {
+            setAnalysisStatus('Naskah berhasil dirakit! Gemini AI sedang membaca, menelaah & membedah pasal serta bab...');
+          } else {
+            setAnalysisStatus(`Mengunggah naskah (${(file.size / (1024 * 1024)).toFixed(1)} MB)... Bagian ${i + 1} dari ${totalChunks} (${percent}% selesai)`);
+          }
 
           const formData = new FormData();
-          formData.append('uploadUrl', uploadUrl);
-          formData.append('offset', start.toString());
-          formData.append('isFinal', isFinal ? 'true' : 'false');
+          formData.append('uploadId', uploadId);
+          formData.append('chunkIndex', i.toString());
+          formData.append('totalChunks', totalChunks.toString());
+          formData.append('fileName', file.name);
+          formData.append('mimeType', file.type || 'application/pdf');
           formData.append('chunk', chunkBlob, file.name);
 
-          const chunkRes = await fetch('/api/parse-draft?action=upload-chunk', {
+          const chunkRes = await fetch('/api/parse-draft?action=upload-file-chunk', {
             method: 'POST',
             body: formData
           });
@@ -191,45 +170,17 @@ export default function UploadDraftForm() {
           try {
             chunkData = JSON.parse(rawChunkText.trim().replace(/^\uFEFF/, ''));
           } catch {
-            throw new Error(`Gagal mengunggah bagian naskah ke server (HTTP ${chunkRes.status}).`);
+            const cleanErr = (rawChunkText || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 150);
+            throw new Error(`Gagal mengunggah bagian naskah ke server (HTTP ${chunkRes.status}): ${cleanErr || 'Respons bukan JSON valid.'}`);
           }
 
-          if (!chunkRes.ok || !chunkData.success) {
+          if (!chunkRes.ok) {
             throw new Error(chunkData.error || `Gagal mengunggah bagian ${i + 1} dari ${totalChunks}.`);
           }
 
-          if (isFinal) {
-            finalFileUri = chunkData.fileUri;
+          if (i === totalChunks - 1) {
+            result = chunkData;
           }
-        }
-
-        if (!finalFileUri) {
-          throw new Error('Gagal memperoleh tautan berkas akhir dari AI.');
-        }
-
-        // 3. Minta Gemini AI membedah naskah dari fileUri (payload sangat ringan ~200 byte)
-        setAnalysisStatus('Naskah berhasil diunggah! Gemini AI sedang membaca, menelaah & membedah pasal serta bab...');
-        const response = await fetch('/api/parse-draft', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fileUri: finalFileUri,
-            fileName: file.name,
-            mimeType: file.type || 'application/pdf'
-          })
-        });
-
-        const rawText = await response.text();
-        try {
-          const cleanText = (rawText || '').trim().replace(/^\uFEFF/, '');
-          result = JSON.parse(cleanText);
-        } catch {
-          const cleanErr = (rawText || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 150);
-          throw new Error(`Gagal memproses respons server AI: ${cleanErr || 'Respons bukan JSON valid.'}`);
-        }
-
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || 'Gagal membedah dokumen dengan AI.');
         }
       } else {
         // Direct upload untuk berkas <= 2 MB

@@ -263,163 +263,6 @@ export async function POST(req: Request) {
     const url = new URL(req.url);
     const action = url.searchParams.get('action');
 
-    // 1. ACTION: Inisiasi Sesi Upload Berkas Besar (Chunked Proxy)
-    if (action === 'init-chunk-upload' || action === 'create-upload-session') {
-      let reqBody: any = {};
-      try {
-        const text = await req.text();
-        if (text && text.trim()) {
-          reqBody = cleanAndParseJson(text);
-        }
-      } catch {
-        // Fallback
-      }
-
-      const fileName = reqBody.fileName || 'dokumen.pdf';
-      const fileSize = reqBody.fileSize || 0;
-      const mimeType = reqBody.mimeType || 'application/pdf';
-
-      const uploadEndpoint = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`;
-      const sessionRes = await fetch(uploadEndpoint, {
-        method: 'POST',
-        headers: {
-          'X-Goog-Upload-Protocol': 'resumable',
-          'X-Goog-Upload-Command': 'start',
-          'X-Goog-Upload-Header-Content-Length': fileSize.toString(),
-          'X-Goog-Upload-Header-Content-Type': mimeType,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ file: { display_name: fileName.slice(0, 100) } })
-      });
-
-      if (!sessionRes.ok) {
-        const errText = await sessionRes.text();
-        return NextResponse.json(
-          { error: `Gagal inisialisasi sesi Google Files (HTTP ${sessionRes.status}): ${errText.slice(0, 200)}` },
-          { status: sessionRes.status }
-        );
-      }
-
-      const uploadUrl = sessionRes.headers.get('x-goog-upload-url');
-      if (!uploadUrl) {
-        return NextResponse.json(
-          { error: 'Header x-goog-upload-url tidak diterima dari Google Files API.' },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json({
-        success: true,
-        uploadUrl
-      });
-    }
-
-    // 2. ACTION: Upload Chunk Berkas ke Google Files API via Server Proxy (Memotong Batasan 4.5MB Vercel & Mengakumulasi 8MB Granularity Google)
-    if (action === 'upload-chunk') {
-      const formData = await req.formData();
-      const uploadUrl = formData.get('uploadUrl') as string;
-      const isFinal = (formData.get('isFinal') as string) === 'true';
-      const chunkFile = formData.get('chunk') as File | null;
-
-      if (!uploadUrl || !chunkFile) {
-        return NextResponse.json(
-          { error: 'Parameter uploadUrl atau data chunk tidak valid.' },
-          { status: 400 }
-        );
-      }
-
-      const arrayBuffer = await chunkFile.arrayBuffer();
-      const chunkBuffer = Buffer.from(arrayBuffer);
-
-      let session = uploadBufferMap.get(uploadUrl);
-      if (!session) {
-        session = { buffer: Buffer.alloc(0), currentOffset: 0 };
-        uploadBufferMap.set(uploadUrl, session);
-      }
-
-      session.buffer = Buffer.concat([session.buffer, chunkBuffer]);
-
-      // Mengirimkan blok kelipatan 8MB ke Google Files API jika buffer server sudah mencapai 8MB
-      while (session.buffer.length >= GOOGLE_REQUIRED_GRANULARITY) {
-        const blockToUpload = session.buffer.subarray(0, GOOGLE_REQUIRED_GRANULARITY);
-        session.buffer = session.buffer.subarray(GOOGLE_REQUIRED_GRANULARITY);
-
-        const blockRes = await fetch(uploadUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Length': GOOGLE_REQUIRED_GRANULARITY.toString(),
-            'X-Goog-Upload-Offset': session.currentOffset.toString(),
-            'X-Goog-Upload-Command': 'upload'
-          },
-          body: new Uint8Array(blockToUpload)
-        });
-
-        if (!blockRes.ok) {
-          const errText = await blockRes.text();
-          uploadBufferMap.delete(uploadUrl);
-          return NextResponse.json(
-            { error: `Gagal mengunggah blok 8MB ke Google Files (HTTP ${blockRes.status}): ${errText.slice(0, 200)}` },
-            { status: blockRes.status }
-          );
-        }
-
-        session.currentOffset += GOOGLE_REQUIRED_GRANULARITY;
-      }
-
-      // Jika ini adalah potongan (chunk) terakhir dari klien
-      if (isFinal) {
-        const finalBuffer = session.buffer;
-        const finalRes = await fetch(uploadUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Length': finalBuffer.length.toString(),
-            'X-Goog-Upload-Offset': session.currentOffset.toString(),
-            'X-Goog-Upload-Command': 'upload, finalize'
-          },
-          body: new Uint8Array(finalBuffer)
-        });
-
-        uploadBufferMap.delete(uploadUrl);
-
-        if (!finalRes.ok) {
-          const errText = await finalRes.text();
-          return NextResponse.json(
-            { error: `Gagal finalisasi berkas di Google Files (HTTP ${finalRes.status}): ${errText.slice(0, 200)}` },
-            { status: finalRes.status }
-          );
-        }
-
-        const resText = await finalRes.text();
-        let fileInfo: any;
-        try {
-          fileInfo = JSON.parse(resText.trim().replace(/^\uFEFF/, ''));
-        } catch {
-          return NextResponse.json(
-            { error: `Google Files API mengembalikan respons bukan JSON (${finalRes.status}): ${resText.slice(0, 150)}` },
-            { status: 500 }
-          );
-        }
-
-        if (!fileInfo?.file?.uri) {
-          return NextResponse.json(
-            { error: 'Google Files API tidak mengembalikan URI berkas aktif.' },
-            { status: 500 }
-          );
-        }
-
-        return NextResponse.json({
-          success: true,
-          isFinal: true,
-          fileUri: fileInfo.file.uri
-        });
-      }
-
-      return NextResponse.json({
-        success: true,
-        isFinal: false
-      });
-    }
-
     const contentType = req.headers.get('content-type') || '';
     let fileBuffer: Buffer | null = null;
     let fileUri = '';
@@ -427,7 +270,51 @@ export async function POST(req: Request) {
     let mimeType = 'application/pdf';
     let textContent = '';
 
-    if (contentType.includes('multipart/form-data')) {
+    // Action: Assembly Chunk File di /tmp (Memotong batas 4.5MB Vercel secara aman)
+    if (action === 'upload-file-chunk') {
+      const formData = await req.formData();
+      const uploadId = (formData.get('uploadId') as string) || `up_${Date.now()}`;
+      const chunkIndex = parseInt((formData.get('chunkIndex') as string) || '0', 10);
+      const totalChunks = parseInt((formData.get('totalChunks') as string) || '1', 10);
+      fileName = (formData.get('fileName') as string) || fileName;
+      mimeType = (formData.get('mimeType') as string) || mimeType;
+      const chunkFile = formData.get('chunk') as File | null;
+
+      if (!chunkFile) {
+        return NextResponse.json({ error: 'Data chunk tidak ditemukan.' }, { status: 400 });
+      }
+
+      const tmpDir = os.tmpdir();
+      const safeUploadId = uploadId.replace(/[^a-zA-Z0-9_-]/g, '');
+      const filePath = path.join(tmpDir, `juknis_upload_${safeUploadId}.tmp`);
+
+      const arrayBuffer = await chunkFile.arrayBuffer();
+      const chunkBuffer = Buffer.from(arrayBuffer);
+
+      if (chunkIndex === 0 && fs.existsSync(filePath)) {
+        try { fs.unlinkSync(filePath); } catch {}
+      }
+
+      fs.appendFileSync(filePath, chunkBuffer);
+
+      if (chunkIndex < totalChunks - 1) {
+        return NextResponse.json({
+          success: true,
+          isComplete: false,
+          chunkIndex,
+          totalChunks
+        });
+      }
+
+      // Potongan Terakhir: Baca seluruh berkas utuh yang telah dirakit
+      if (fs.existsSync(filePath)) {
+        fileBuffer = fs.readFileSync(filePath);
+        try { fs.unlinkSync(filePath); } catch {}
+        console.log(`[Bedah Dokumen] Berkas ${fileName} (${(fileBuffer.length / 1024 / 1024).toFixed(2)} MB) selesai dirakit.`);
+      } else {
+        return NextResponse.json({ error: 'Gagal merakit potongan berkas di server.' }, { status: 500 });
+      }
+    } else if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
       const file = formData.get('file') as File | null;
       if (file) {

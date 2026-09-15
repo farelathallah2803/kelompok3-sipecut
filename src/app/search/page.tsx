@@ -12,12 +12,9 @@ import {
   ArrowLeft,
   ArrowRight,
   Filter,
-  X,
-  QrCode
+  X
 } from 'lucide-react';
 import { searchAllRegulations, SmartSearchResponse, SearchResultArticle } from '@/lib/smartSearchEngine';
-import QrScannerModal from '@/components/common/QrScannerModal';
-import { ParsedJdihQrResult } from '@/lib/jdihQrParser';
 
 const POPULAR_QUERIES = [
   'Larangan surcharge',
@@ -35,12 +32,6 @@ function SearchContent() {
   const [selectedSectorFilter, setSelectedSectorFilter] = useState<string>('ALL');
   const [searchResult, setSearchResult] = useState<SmartSearchResponse | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
-
-  const handleQrSelect = (res: ParsedJdihQrResult) => {
-    const q = res.suggestedSearchQuery || res.regulationNumber || res.rawText;
-    handleExecuteSearch(q);
-  };
 
   useEffect(() => {
     if (initialQ) {
@@ -81,14 +72,12 @@ function SearchContent() {
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Kembali ke Dashboard</span>
         </Link>
-        <div className="flex items-center space-x-2">
-          <div className="p-1.5 rounded-lg bg-blue-600 text-white shadow-xs">
-            <Search className="w-4 h-4" />
-          </div>
-          <h1 className="text-xl font-bold text-slate-900">
-            Pencarian Regulasi &amp; Pasal BI
-          </h1>
-        </div>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          Pencarian Regulasi &amp; Pasal BI
+        </h1>
+        <p className="text-xs text-slate-500">
+          Cari ketentuan, klausul, atau pasal dalam basis data regulasi Bank Indonesia.
+        </p>
       </div>
 
       {/* Search Input Box */}
@@ -112,15 +101,6 @@ function SearchContent() {
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => setIsQrModalOpen(true)}
-              className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-semibold transition"
-              title="Pindai QR Code Dokumen JDIH Bank Indonesia"
-            >
-              <QrCode className="w-3.5 h-3.5 text-blue-600" />
-              <span className="hidden sm:inline">Scan QR JDIH</span>
-            </button>
           </div>
         </div>
 
@@ -322,14 +302,6 @@ function SearchContent() {
         </div>
       )}
 
-      {/* JDIH BI QR Code Scanner Modal */}
-      <QrScannerModal
-        isOpen={isQrModalOpen}
-        onClose={() => setIsQrModalOpen(false)}
-        onSelectRegulation={handleQrSelect}
-        actionLabel="Tampilkan Regulasi &amp; Pasal"
-        contextTitle="Pindai QR Regulasi JDIH BI"
-      />
     </div>
   );
 }

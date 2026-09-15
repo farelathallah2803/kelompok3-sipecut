@@ -25,8 +25,7 @@ import {
   ChevronDown,
   ChevronUp,
   BookOpen,
-  Info,
-  QrCode
+  Info
 } from 'lucide-react';
 import { 
   PetunjukTeknisDraft, 
@@ -40,8 +39,6 @@ import {
 import { saveDraft, getActiveRole } from '@/lib/storage';
 import { MOCK_REGULATIONS } from '@/data/mockRegulations';
 import { SATUAN_KERJA_LIST, getSatkerByCode } from '@/data/satkerData';
-import QrScannerModal from '@/components/common/QrScannerModal';
-import { ParsedJdihQrResult } from '@/lib/jdihQrParser';
 
 export default function UploadDraftForm() {
   const router = useRouter();
@@ -66,7 +63,6 @@ export default function UploadDraftForm() {
   ]);
   const [searchRegQuery, setSearchRegQuery] = useState('');
   const [isSearchRegOpen, setIsSearchRegOpen] = useState(false);
-  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   // AI Dissection States
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -127,13 +123,6 @@ export default function UploadDraftForm() {
 
   const removeLegalBase = (regNumber: string) => {
     setSelectedRegulations(selectedRegulations.filter(r => r !== regNumber));
-  };
-
-  const handleQrSelect = (res: ParsedJdihQrResult) => {
-    const regNum = res.regulationNumber || res.suggestedSearchQuery;
-    if (regNum && !selectedRegulations.includes(regNum)) {
-      setSelectedRegulations(prev => [...prev, regNum]);
-    }
   };
 
   // AI Bedah Dokumen Handler (Mendukung berkas naskah besar hingga 200MB+ via Direct Google Gemini Files API)
@@ -649,11 +638,11 @@ export default function UploadDraftForm() {
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Kembali ke Monitoring</span>
           </Link>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            Pengajuan &amp; Bedah Dokumen Naskah Juknis
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            Pengajuan Naskah Petunjuk Teknis
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Unggah berkas naskah Juknis. Gemini AI akan otomatis membaca, mengekstrak struktur, dan membedah dokumen ke dalam bab serta pasal yang dapat diedit langsung.
+            Unggah berkas PDF/DOCX. Gemini AI akan membedah struktur bab dan pasal secara otomatis.
           </p>
         </div>
       </div>
@@ -1020,20 +1009,9 @@ export default function UploadDraftForm() {
                 <label className="block text-xs font-semibold text-slate-800">
                   Dasar Hukum / Aturan Acuan (JDIH BI) <span className="text-rose-500">*</span>
                 </label>
-                <div className="flex items-center space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsQrModalOpen(true)}
-                    className="inline-flex items-center space-x-1.5 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition shadow-2xs"
-                    title="Pindai QR Code Dokumen Regulasi dari JDIH Bank Indonesia"
-                  >
-                    <QrCode className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Pindai QR JDIH</span>
-                  </button>
-                  <span className="text-[11px] text-slate-500">
-                    {selectedRegulations.length} terpilih
-                  </span>
-                </div>
+                <span className="text-[11px] text-slate-500">
+                  {selectedRegulations.length} terpilih
+                </span>
               </div>
 
               {/* Selected Regulations Badges */}
@@ -1477,15 +1455,6 @@ export default function UploadDraftForm() {
           </button>
         </div>
       </form>
-
-      {/* JDIH QR Scanner Modal */}
-      <QrScannerModal
-        isOpen={isQrModalOpen}
-        onClose={() => setIsQrModalOpen(false)}
-        onSelectRegulation={handleQrSelect}
-        actionLabel="Tambahkan ke Dasar Hukum"
-        contextTitle="Pindai QR Dasar Hukum JDIH BI"
-      />
     </div>
   );
 }

@@ -92,16 +92,11 @@ export default function RegulationsCatalogPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
         <div>
-          <div className="flex items-center space-x-2">
-            <h1 className="text-xl font-bold text-slate-900">
-              Repositori Regulasi Bank Indonesia
-            </h1>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-              Sinkronisasi JDIH BI
-            </span>
-          </div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            Katalog Regulasi Bank Indonesia
+          </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Katalog terintegrasi basis data JDIH BI mencakup sektor Moneter, Sistem Pembayaran, Makroprudensial, dan Ketentuan Tata Kelola Intern.
+            Basis data JDIH BI mencakup regulasi Moneter, Sistem Pembayaran, Makroprudensial, dan Tata Kelola Intern.
           </p>
         </div>
       </div>

@@ -85,17 +85,11 @@ export default function SatkerDirectoryPage() {
       {/* Executive Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
         <div>
-          <div className="flex items-center space-x-2 text-xs text-slate-500 mb-1">
-            <Building2 className="w-3.5 h-3.5 text-blue-600" />
-            <span>Struktur Organisasi Bank Indonesia</span>
-            <span>&bull;</span>
-            <span className="font-semibold text-slate-700">33 Satuan Kerja</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            Direktori Satuan Kerja (Satker) Bank Indonesia
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            Direktori Satuan Kerja Bank Indonesia
           </h1>
-          <p className="text-xs text-slate-600 mt-1 max-w-3xl">
-            Daftar resmi satuan kerja pemrakarsa dan penelaah teknis dalam perumusan Petunjuk Teknis (Juknis) serta tata kelola kebijakan Bank Indonesia.
+          <p className="text-xs text-slate-500 mt-0.5">
+            Daftar 33 Satker pemrakarsa dan penelaah Petunjuk Teknis di lingkungan Bank Indonesia.
           </p>
         </div>
 

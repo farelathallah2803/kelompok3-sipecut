@@ -14,12 +14,9 @@ import {
   AlertTriangle, 
   ShieldCheck, 
   Clock,
-  ArrowRight,
-  QrCode
+  ArrowRight
 } from 'lucide-react';
 import { searchAllRegulations, SmartSearchResponse, SearchResultArticle } from '@/lib/smartSearchEngine';
-import QrScannerModal from '@/components/common/QrScannerModal';
-import { ParsedJdihQrResult } from '@/lib/jdihQrParser';
 
 interface SmartSearchModalProps {
   isOpen: boolean;
@@ -38,13 +35,7 @@ export default function SmartSearchModal({ isOpen, onClose, initialQuery = '' }:
   const [query, setQuery] = useState(initialQuery);
   const [searchResult, setSearchResult] = useState<SmartSearchResponse | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const handleQrSelect = (res: ParsedJdihQrResult) => {
-    const q = res.suggestedSearchQuery || res.regulationNumber || res.rawText;
-    handleSearch(q);
-  };
 
   useEffect(() => {
     if (isOpen) {
@@ -114,15 +105,6 @@ export default function SmartSearchModal({ isOpen, onClose, initialQuery = '' }:
               </button>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => setIsQrModalOpen(true)}
-            className="p-1.5 text-blue-600 hover:text-blue-800 rounded-lg hover:bg-blue-50 transition flex items-center space-x-1 text-xs font-semibold shrink-0"
-            title="Pindai QR Code Dokumen JDIH BI"
-          >
-            <QrCode className="w-4 h-4 text-blue-600" />
-            <span className="hidden sm:inline text-xs">Scan QR</span>
-          </button>
           <button
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition"
@@ -262,14 +244,6 @@ export default function SmartSearchModal({ isOpen, onClose, initialQuery = '' }:
         </div>
       </div>
 
-      {/* JDIH BI QR Code Scanner Modal */}
-      <QrScannerModal
-        isOpen={isQrModalOpen}
-        onClose={() => setIsQrModalOpen(false)}
-        onSelectRegulation={handleQrSelect}
-        actionLabel="Cari Regulasi Ini"
-        contextTitle="Pindai QR Regulasi JDIH BI"
-      />
     </div>
   );
 }

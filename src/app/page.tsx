@@ -79,16 +79,11 @@ export default function DashboardPage() {
       {/* Clean Executive Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
         <div>
-          <div className="flex items-center space-x-2">
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              Monitoring &amp; Harmonisasi Juknis
-            </h1>
-            <span className="px-2 py-0.5 rounded-md bg-bi-navy text-white border border-bi-gold/40 text-[10px] font-black tracking-wider shadow-2xs">
-              PRISMA
-            </span>
-          </div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            Monitoring &amp; Harmonisasi Juknis
+          </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Platform Regulasi, Integrasi, Search, Monitoring &amp; Administration Bank Indonesia
+            Pantau status alur persetujuan dan penyelarasan regulasi Petunjuk Teknis Bank Indonesia.
           </p>
         </div>
 

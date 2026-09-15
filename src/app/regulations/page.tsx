@@ -252,6 +252,7 @@ export default function RegulationsCatalogPage() {
           {[
             { id: 'all', label: 'Semua Jenis' },
             { id: 'PBI', label: 'PBI (Peraturan Bank Indonesia)' },
+            { id: 'PDG', label: 'PDG (Peraturan Dewan Gubernur)' },
             { id: 'PADG', label: 'PADG (Peraturan Anggota Dewan Gubernur)' },
             { id: 'PADG_INTERN', label: 'PADG Intern' },
             { id: 'SE', label: 'SE Ekstern BI' },
@@ -310,6 +311,9 @@ export default function RegulationsCatalogPage() {
             if (reg.type === 'PBI') {
               badgeStyle = 'bg-blue-50 text-blue-700 border-blue-200';
               borderStyle = 'border-l-4 border-l-blue-600';
+            } else if (reg.type === 'PDG') {
+              badgeStyle = 'bg-cyan-50 text-cyan-700 border-cyan-200';
+              borderStyle = 'border-l-4 border-l-cyan-600';
             } else if (reg.type === 'PADG') {
               badgeStyle = 'bg-teal-50 text-teal-700 border-teal-200';
               borderStyle = 'border-l-4 border-l-teal-600';

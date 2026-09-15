@@ -159,6 +159,14 @@ function SearchContent() {
                 PBI ({searchResult.hierarchyBreakdown.pbi})
               </button>
               <button
+                onClick={() => setSelectedTypeFilter('PDG')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                  selectedTypeFilter === 'PDG' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                PDG ({searchResult.hierarchyBreakdown.pdg || 0})
+              </button>
+              <button
                 onClick={() => setSelectedTypeFilter('PADG')}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
                   selectedTypeFilter === 'PADG' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -217,13 +225,15 @@ function SearchContent() {
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded font-mono ${
                           art.regulationType === 'PBI'
                             ? 'bg-blue-100 text-blue-800'
+                            : art.regulationType === 'PDG'
+                            ? 'bg-teal-100 text-teal-800'
                             : art.regulationType === 'PADG'
                             ? 'bg-cyan-100 text-cyan-800'
                             : art.regulationType === 'PADG_INTERN'
                             ? 'bg-purple-100 text-purple-800'
                             : 'bg-amber-100 text-amber-800'
                         }`}>
-                          {art.regulationType}
+                          {art.regulationType === 'PADG_INTERN' ? 'PADG Intern' : art.regulationType}
                         </span>
                         <span className="font-mono text-xs font-bold text-slate-900">
                           {art.regulationNumber}

@@ -29,6 +29,7 @@ export interface SmartSearchResponse {
   totalMatched: number;
   hierarchyBreakdown: {
     pbi: number;
+    pdg: number;
     padg: number;
     padgIntern: number;
     juknis: number;
@@ -110,7 +111,7 @@ export function searchAllRegulations(rawQuery: string): SmartSearchResponse {
       aiExecutiveAnswer: 'Ketik kata kunci untuk mencari regulasi dan pasal terkait.',
       keyTakeaway: 'PBI, PADG, PADG Intern, dan Petunjuk Teknis.',
       totalMatched: 0,
-      hierarchyBreakdown: { pbi: 0, padg: 0, padgIntern: 0, juknis: 0 },
+      hierarchyBreakdown: { pbi: 0, pdg: 0, padg: 0, padgIntern: 0, juknis: 0 },
       articles: []
     };
   }
@@ -261,6 +262,7 @@ export function searchAllRegulations(rawQuery: string): SmartSearchResponse {
 
   const breakdown = {
     pbi: matchedArticles.filter(a => a.regulationType === 'PBI').length,
+    pdg: matchedArticles.filter(a => a.regulationType === 'PDG').length,
     padg: matchedArticles.filter(a => a.regulationType === 'PADG').length,
     padgIntern: matchedArticles.filter(a => a.regulationType === 'PADG_INTERN').length,
     juknis: matchedArticles.filter(a => a.regulationType === 'JUKNIS').length,

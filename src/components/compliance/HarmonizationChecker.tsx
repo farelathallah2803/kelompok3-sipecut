@@ -78,6 +78,8 @@ export default function HarmonizationChecker({ draft, onAnalysisUpdated }: Harmo
     switch (type) {
       case 'PBI':
         return <span className="bg-red-700 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-xs">PBI</span>;
+      case 'PDG':
+        return <span className="bg-cyan-700 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-xs">PDG</span>;
       case 'PADG':
         return <span className="bg-blue-700 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-xs">PADG</span>;
       case 'PADG_INTERN':

@@ -130,27 +130,27 @@ export default function UploadDraftForm() {
     setErrorMsg('');
 
     try {
-      // Read file as base64
-      const base64Data = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = (err) => reject(err);
-        reader.readAsDataURL(file);
-      });
+      setAnalysisStatus('Mengunggah berkas naskah...');
 
-      setAnalysisStatus('Gemini AI sedang menelaah & membedah pasal, bab, serta definisi...');
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('fileName', file.name);
+      formData.append('mimeType', file.type || 'application/pdf');
+
+      setAnalysisStatus('Gemini AI sedang membaca, menelaah & membedah pasal, bab, serta definisi...');
 
       const response = await fetch('/api/parse-draft', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileBase64: base64Data,
-          mimeType: file.type || 'application/pdf',
-          fileName: file.name
-        })
+        body: formData
       });
 
-      const result = await response.json();
+      const rawText = await response.text();
+      let result: any;
+      try {
+        result = JSON.parse(rawText);
+      } catch (parseErr) {
+        throw new Error(`Gagal memproses respons server (${response.status}): ${rawText.slice(0, 150)}`);
+      }
 
       if (!response.ok || !result.success) {
         throw new Error(result.error || 'Gagal membedah dokumen dengan AI.');

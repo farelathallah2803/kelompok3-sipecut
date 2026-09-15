@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { PetunjukTeknisDraft, UserRole } from '@/types';
 import { getDrafts, getActiveRole, getStageLabel, getWorkflowType } from '@/lib/storage';
+import { SATUAN_KERJA_LIST } from '@/data/satkerData';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -145,6 +146,12 @@ export default function DashboardPage() {
     }
   };
 
+  // Active Satker Label for display
+  const activeSatkerObj = SATUAN_KERJA_LIST.find(s => s.code.toUpperCase() === activeSatkerScope.toUpperCase());
+  const activeSatkerLabel = activeSatkerScope === 'all'
+    ? 'Semua 33 Satker BI (Global)'
+    : (activeSatkerObj ? `${activeSatkerObj.code} - ${activeSatkerObj.name}` : activeSatkerScope);
+
   return (
     <div className="w-full space-y-6">
       {/* Executive Header */}
@@ -183,26 +190,28 @@ export default function DashboardPage() {
           <span className="text-slate-400 font-medium">Cakupan Statistik &amp; Berkas:</span>
           {isGlobalReviewerRole ? (
             <span className="font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-md">
-              Keseluruhan Satker Bank Indonesia ({activeRole.toUpperCase()})
+              Penelaah Central ({activeRole.toUpperCase()}) &bull; {activeSatkerLabel}
             </span>
           ) : (
             <span className="font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-md">
-              Satker Pemrakarsa: DKSP (Departemen Kebijakan Sistem Pembayaran)
+              Satker Pemrakarsa: {activeSatkerLabel}
             </span>
           )}
         </div>
 
         <div className="flex items-center space-x-2 shrink-0">
-          <span className="text-[11px] text-slate-400">Filter Satker:</span>
+          <span className="text-[11px] text-slate-400">Filter Satker (33 Satker BI):</span>
           <select
             value={activeSatkerScope}
             onChange={(e) => setSelectedSatkerFilter(e.target.value)}
-            className="text-xs py-1 px-2.5 rounded-md border border-slate-200 bg-slate-50 font-semibold text-slate-800 focus:outline-hidden"
+            className="text-xs py-1.5 px-2.5 rounded-md border border-slate-200 bg-slate-50 font-semibold text-slate-800 focus:outline-hidden max-w-xs sm:max-w-sm truncate"
           >
-            <option value="all">Semua Satker (Global)</option>
-            <option value="DKSP">DKSP (Sistem Pembayaran)</option>
-            <option value="DLDS">DLDS (Digital & Siber)</option>
-            <option value="DPUM">DPUM (Pengembangan UMKM)</option>
+            <option value="all">Semua 33 Satker (Global BI)</option>
+            {SATUAN_KERJA_LIST.map((satker) => (
+              <option key={satker.code} value={satker.code}>
+                {satker.code} - {satker.name} ({satker.sector})
+              </option>
+            ))}
           </select>
         </div>
       </div>

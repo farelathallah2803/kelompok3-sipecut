@@ -23,6 +23,7 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedScopeFilter, setSelectedScopeFilter] = useState<string>('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
+  const [selectedSatkerFilter, setSelectedSatkerFilter] = useState<string>('auto');
 
   const loadData = () => {
     setDrafts(getDrafts());
@@ -39,7 +40,34 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const filteredDrafts = drafts.filter(draft => {
+  // Is active role a central reviewer (DMST, DMR, DHk, DAI, etc)?
+  const isGlobalReviewerRole = [
+    'dmst_governance',
+    'dmr_reviewer',
+    'dhuk_legal',
+    'dai_auditor',
+    'kemenkum_kemenkeu',
+    'sekretariat_rdg',
+    'adg_pembina',
+    'gubernur_bi'
+  ].includes(activeRole);
+
+  // Satker Pemrakarsa default for Satker/Pimpinan Satker account
+  const defaultSatker = (activeRole === 'drafter' || activeRole === 'pimpinan_satker') ? 'DKSP' : 'all';
+
+  // Effective Satker scope for stats and list
+  const activeSatkerScope = selectedSatkerFilter === 'auto' ? defaultSatker : selectedSatkerFilter;
+
+  // Filter drafts based on account role & Satker scope
+  const accountDrafts = drafts.filter(draft => {
+    if (activeSatkerScope === 'all') return true;
+    return (
+      (draft.rubrikSatker || '').toUpperCase() === activeSatkerScope.toUpperCase() ||
+      (draft.unitKerja || '').toUpperCase().includes(activeSatkerScope.toUpperCase())
+    );
+  });
+
+  const filteredDrafts = accountDrafts.filter(draft => {
     const matchesSearch = 
       draft.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       draft.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -51,14 +79,15 @@ export default function DashboardPage() {
     return matchesSearch && matchesScope && matchesStatus;
   });
 
-  const totalCount = drafts.length;
-  const inReviewCount = drafts.filter(d => d.status === 'in_review').length;
-  const approvedCount = drafts.filter(d => d.status === 'approved' || d.currentStage === 'ditetapkan' || d.currentStage === 'juknis_publikasi_dhk').length;
-  const needRevisionCount = drafts.filter(d => d.status === 'revision_requested' || (d.complianceSummary && d.complianceSummary.conflictCount > 0)).length;
-  const rejectedCount = drafts.filter(d => d.status === 'rejected').length;
+  // Account-based Statistics
+  const totalCount = accountDrafts.length;
+  const inReviewCount = accountDrafts.filter(d => d.status === 'in_review').length;
+  const approvedCount = accountDrafts.filter(d => d.status === 'approved' || d.currentStage === 'ditetapkan' || d.currentStage === 'juknis_publikasi_dhk').length;
+  const needRevisionCount = accountDrafts.filter(d => d.status === 'revision_requested' || (d.complianceSummary && d.complianceSummary.conflictCount > 0)).length;
+  const rejectedCount = accountDrafts.filter(d => d.status === 'rejected').length;
 
-  const internalCount = drafts.filter(d => (d.scope || '').toUpperCase() === 'INTERNAL').length;
-  const eksternalCount = drafts.filter(d => (d.scope || '').toUpperCase() === 'EKSTERNAL').length;
+  const internalCount = accountDrafts.filter(d => (d.scope || '').toUpperCase() === 'INTERNAL').length;
+  const eksternalCount = accountDrafts.filter(d => (d.scope || '').toUpperCase() === 'EKSTERNAL').length;
 
   const getJuknisBadgeInfo = (draft: PetunjukTeknisDraft) => {
     const isInternal = (draft.scope || '').toUpperCase() === 'INTERNAL';
@@ -75,9 +104,50 @@ export default function DashboardPage() {
     };
   };
 
+  const renderStatusBadge = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return (
+          <span className="inline-flex items-center w-32 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mr-1.5 shrink-0"></span>
+            <span>Ditetapkan</span>
+          </span>
+        );
+      case 'in_review':
+        return (
+          <span className="inline-flex items-center w-32 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 mr-1.5 shrink-0"></span>
+            <span>Dalam Review</span>
+          </span>
+        );
+      case 'revision_requested':
+        return (
+          <span className="inline-flex items-center w-32 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-900 border border-amber-300">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-600 mr-1.5 shrink-0"></span>
+            <span>Perlu Revisi</span>
+          </span>
+        );
+      case 'rejected':
+        return (
+          <span className="inline-flex items-center w-32 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-800 border border-rose-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-600 mr-1.5 shrink-0"></span>
+            <span>Ditolak</span>
+          </span>
+        );
+      case 'draft':
+      default:
+        return (
+          <span className="inline-flex items-center w-32 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5 shrink-0"></span>
+            <span>Draft Awal</span>
+          </span>
+        );
+    }
+  };
+
   return (
     <div className="w-full space-y-6">
-      {/* Clean Executive Header */}
+      {/* Executive Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
@@ -107,7 +177,37 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Clean Stat Strip */}
+      {/* Account Scope Indicator Banner */}
+      <div className="bg-white px-4 py-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+        <div className="flex items-center space-x-2">
+          <span className="text-slate-400 font-medium">Cakupan Statistik &amp; Berkas:</span>
+          {isGlobalReviewerRole ? (
+            <span className="font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-md">
+              Keseluruhan Satker Bank Indonesia ({activeRole.toUpperCase()})
+            </span>
+          ) : (
+            <span className="font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-md">
+              Satker Pemrakarsa: DKSP (Departemen Kebijakan Sistem Pembayaran)
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center space-x-2 shrink-0">
+          <span className="text-[11px] text-slate-400">Filter Satker:</span>
+          <select
+            value={activeSatkerScope}
+            onChange={(e) => setSelectedSatkerFilter(e.target.value)}
+            className="text-xs py-1 px-2.5 rounded-md border border-slate-200 bg-slate-50 font-semibold text-slate-800 focus:outline-hidden"
+          >
+            <option value="all">Semua Satker (Global)</option>
+            <option value="DKSP">DKSP (Sistem Pembayaran)</option>
+            <option value="DLDS">DLDS (Digital & Siber)</option>
+            <option value="DPUM">DPUM (Pengembangan UMKM)</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Clean Stat Strip (5 Columns) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-xs font-semibold text-slate-500">Total Berkas Juknis</div>
@@ -279,36 +379,7 @@ export default function DashboardPage() {
                       </td>
 
                       <td className="py-3.5 px-4">
-                        {draft.status === 'approved' && (
-                          <span className="inline-flex items-center w-28 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mr-1.5 shrink-0"></span>
-                            <span>Ditetapkan</span>
-                          </span>
-                        )}
-                        {draft.status === 'in_review' && (
-                          <span className="inline-flex items-center w-28 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 mr-1.5 shrink-0"></span>
-                            <span>Dalam Review</span>
-                          </span>
-                        )}
-                        {draft.status === 'revision_requested' && (
-                          <span className="inline-flex items-center w-28 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-600 mr-1.5 shrink-0"></span>
-                            <span>Perlu Revisi</span>
-                          </span>
-                        )}
-                        {draft.status === 'rejected' && (
-                          <span className="inline-flex items-center w-28 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-rose-600 mr-1.5 shrink-0"></span>
-                            <span>Ditolak</span>
-                          </span>
-                        )}
-                        {(draft.status === 'draft' || (!['approved', 'in_review', 'revision_requested', 'rejected'].includes(draft.status))) && (
-                          <span className="inline-flex items-center w-28 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5 shrink-0"></span>
-                            <span>Draft Awal</span>
-                          </span>
-                        )}
+                        {renderStatusBadge(draft.status)}
                       </td>
 
                       <td className="py-3.5 px-4 text-right">

@@ -175,8 +175,8 @@ export const INITIAL_DRAFTS: PetunjukTeknisDraft[] = [
     category: 'Manajemen Risiko & Tata Kelola',
     unitKerja: 'Departemen Layanan Digital & Keamanan Siber (DLDS)',
     proposerName: 'Siti Rahmadani',
-    currentStage: 'juknis_evaluasi_dmst',
-    status: 'in_review',
+    currentStage: 'juknis_penyusunan',
+    status: 'revision_requested',
     createdAt: '2025-10-15T09:00:00Z',
     updatedAt: '2025-12-28T16:45:00Z',
     foreword: 'Petunjuk teknis ini memuat panduan detail bagi administrator sistem dan engineer DLDS dalam pemeliharaan berkala dan failover server BI-FAST.',
@@ -238,8 +238,8 @@ export const INITIAL_DRAFTS: PetunjukTeknisDraft[] = [
         reviewerRole: 'dhuk_legal',
         reviewerName: 'Sarah Wijaya, S.H., LL.M.',
         department: 'Departemen Hukum (DHk)',
-        decision: 'approve',
-        notes: 'Hasil Reviu Teknis: Format naskah telah memenuhi Templat 2 Lampiran X PADG Intern No. 66 Tahun 2025. Diteruskan ke evaluasi tata kelola DMST.',
+        decision: 'request_revision',
+        notes: 'Hasil Reviu Teknis: Diperlukan perbaikan matriks eskalasi insiden dan rujukan pasal UU Siber. Dikembalikan ke Satker Pemrakarsa (DLDS).',
         createdAt: '2025-12-10T09:15:00Z'
       }
     ],
@@ -257,9 +257,9 @@ export const INITIAL_DRAFTS: PetunjukTeknisDraft[] = [
         timestamp: '2025-12-10T09:15:00Z',
         actor: 'Sarah Wijaya, S.H., LL.M.',
         role: 'DHk Legal Reviewer',
-        action: 'Persetujuan Reviu Teknis Terpadu',
+        action: 'Permintaan Revisi Materi Naskah',
         stage: 'juknis_reviu_teknis',
-        details: 'Draft disetujui untuk proses evaluasi tata kelola oleh DMST.'
+        details: 'Draft dikembalikan ke Satker Pemrakarsa untuk perbaikan pasal matriks eskalasi.'
       }
     ]
   },
@@ -276,8 +276,8 @@ export const INITIAL_DRAFTS: PetunjukTeknisDraft[] = [
     category: 'Sistem Pembayaran',
     unitKerja: 'Departemen Kebijakan Sistem Pembayaran (DKSP)',
     proposerName: 'Dimas Wicaksono',
-    currentStage: 'juknis_persetujuan_adg',
-    status: 'in_review',
+    currentStage: 'juknis_publikasi_dhk',
+    status: 'approved',
     createdAt: '2025-12-01T13:00:00Z',
     updatedAt: '2025-12-14T10:20:00Z',
     foreword: 'Petunjuk teknis ini diterbitkan sebagai pedoman penjelasan teknis (Templat 3) bagi Penyelenggara Jasa Pembayaran dalam mengimplementasikan Standar Nasional Open API Pembayaran (SNAP).',
@@ -334,13 +334,18 @@ export const INITIAL_DRAFTS: PetunjukTeknisDraft[] = [
     reviewNotes: [
       {
         id: 'rev-301',
-        stage: 'juknis_pembahasan_rdg',
-        reviewerRole: 'sekretariat_rdg',
-        reviewerName: 'Sekretariat Dewan Gubernur',
-        department: 'Sekretariat RDG',
+        stage: 'juknis_publikasi_dhk',
+        reviewerRole: 'dhuk_legal',
+        reviewerName: 'Aditya Pratama, S.H., LL.M.',
+        department: 'Departemen Hukum (DHk)',
         decision: 'approve',
-        notes: 'Hasil Pembahasan RDG: Pokok-pokok petunjuk teknis telah disetujui dalam Rapat Dewan Gubernur. Diteruskan ke ADG Pembina untuk pengesahan.',
-        createdAt: '2025-12-15T11:00:00Z'
+        notes: 'Naskah Petunjuk Teknis SNAP telah secara resmi diundangkan dan dipublikasikan pada repositori JDIH Bank Indonesia.',
+        createdAt: '2025-12-15T11:00:00Z',
+        publicationDetails: {
+          registrationNumber: 'NOMOR 1/JUKNIS/EKSTERNAL/DKSP/2025-REG',
+          publishedDate: '2025-12-15',
+          jdihUrl: 'https://jdih.bi.go.id/Web/DaftarPeraturan/Detail/12345'
+        }
       }
     ],
     history: [
@@ -355,11 +360,103 @@ export const INITIAL_DRAFTS: PetunjukTeknisDraft[] = [
       {
         id: 'log-t3-2',
         timestamp: '2025-12-15T11:00:00Z',
-        actor: 'Sekretariat Dewan Gubernur',
-        role: 'Sekretariat RDG',
-        action: 'Persetujuan Pembahasan RDG',
-        stage: 'juknis_pembahasan_rdg',
-        details: 'Diteruskan untuk penandatanganan pengesahan oleh ADG Pembina.'
+        actor: 'Aditya Pratama, S.H.',
+        role: 'Legal DHk',
+        action: 'Publikasi dan Pengundangan Resmi',
+        stage: 'juknis_publikasi_dhk',
+        details: 'Secara resmi diundangkan di JDIH BI.'
+      }
+    ]
+  },
+  {
+    id: 'draft-004',
+    workflowType: 'juknis',
+    code: 'NOMOR 3/JUKNIS/INTERNAL/DPUM/2025',
+    title: 'Rancangan Petunjuk Teknis Skema Insentif Likuiditas dan Fasilitas Pembiayaan Khusus Usaha Mikro, Kecil, dan Menengah (UMKM)',
+    templateType: 'templat_1',
+    isConfidential: false,
+    scope: 'INTERNAL',
+    rubrikSatker: 'DPUM',
+    year: 2025,
+    category: 'Pendukung Kebijakan',
+    unitKerja: 'Departemen Pengembangan UMKM dan Perlindungan Konsumen (DPUM)',
+    proposerName: 'Budi Santoso',
+    currentStage: 'juknis_evaluasi_dmst',
+    status: 'rejected',
+    createdAt: '2025-11-05T10:00:00Z',
+    updatedAt: '2025-12-18T14:30:00Z',
+    foreword: 'Rancangan petunjuk teknis pelaksanaan insentif pembiayaan UMKM bagi bank umum mitra.',
+    validation: {
+      place: 'Jakarta',
+      date: '2025-12-18',
+      effectiveDate: '2026-01-01',
+      officialName: 'Yunita Resmi Sari',
+      officialPosition: 'Kepala Departemen Pengembangan UMKM',
+      rank: 'Direktur Eksekutif'
+    },
+    revocations: [],
+    generalProvisions: {
+      background: 'Memberikan insentif pemenuhan Giro Wajib Minimum (GWM) bagi bank yang menyalurkan pembiayaan inklusif ke sektor UMKM.',
+      legalBases: [
+        'PBI No. 23/13/PBI/2021',
+        'PADG Intern No. 66 Tahun 2025'
+      ],
+      purpose: 'Menyusun petunjuk pelaksanaan verifikasi kelayakan bank penerima insentif.',
+      definitions: [
+        {
+          id: 'def-t4-1',
+          term: 'Insentif GWM Inklusif',
+          meaning: 'Pengurangan kewajiban GWM Rupiah bagi bank yang memenuhi target Rasio Pembiayaan Inklusif Makroprudensial (RPIM).'
+        }
+      ],
+      scope: 'Verifikasi klaim bank, audit lapangan, dan penetapan besaran potongan GWM.'
+    },
+    chapters: [
+      {
+        id: 'chap-t4-1',
+        chapterNumber: 'BAB II',
+        title: 'MEKANISME VERIFIKASI INSENTIF GWM',
+        articles: [
+          {
+            id: 'art-t4-1',
+            articleNumber: 'Bagian 1',
+            title: 'Kriteria Bank Penerima Insentif',
+            content: 'Bank umum yang mengajukan insentif wajib menyampaikan data debitur UMKM terverifikasi paling lambat tanggal 10 setiap bulan.',
+            explanation: 'Syarat administratif pengajuan insentif.'
+          }
+        ]
+      }
+    ],
+    attachments: [],
+    reviewNotes: [
+      {
+        id: 'rev-401',
+        stage: 'juknis_evaluasi_dmst',
+        reviewerRole: 'dmst_governance',
+        reviewerName: 'Maya Puspitasari, M.Sc.',
+        department: 'Departemen Manajemen Strategis & Tata Kelola (DMST)',
+        decision: 'reject',
+        notes: 'Ditolak Definitif: Substansi insentif pembiayaan berbenturan dengan sasaran strategis makroprudensial dan perlu dibahas ulang dalam Rapat Anggota Dewan Gubernur sebelum diajukan kembali.',
+        createdAt: '2025-12-18T14:30:00Z'
+      }
+    ],
+    history: [
+      {
+        id: 'log-t4-1',
+        timestamp: '2025-11-05T10:00:00Z',
+        actor: 'Budi Santoso',
+        role: 'Drafter Unit Kerja',
+        action: 'Penyusunan Juknis Insentif GWM UMKM',
+        stage: 'juknis_penyusunan'
+      },
+      {
+        id: 'log-t4-2',
+        timestamp: '2025-12-18T14:30:00Z',
+        actor: 'Maya Puspitasari, M.Sc.',
+        role: 'Analis DMST',
+        action: 'Penolakan Definitif Naskah Juknis',
+        stage: 'juknis_evaluasi_dmst',
+        details: 'Naskah ditolak karena ketidaksesuaian kerangka tata kelola strategis.'
       }
     ]
   }

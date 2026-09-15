@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
-  Scale, 
   FileText, 
   PlusCircle, 
   BookOpen, 
@@ -190,23 +189,12 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
       {/* Brand Header with Hide Button */}
       <div className="p-4 border-b border-slate-200">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2.5 group min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-[#003366] flex items-center justify-center text-white shadow-sm shrink-0 group-hover:scale-105 transition">
-              <Scale className="w-4.5 h-4.5 text-amber-300" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center space-x-1.5">
-                <span className="font-extrabold text-sm tracking-tight text-slate-900 group-hover:text-blue-700 transition">
-                  SI-JUKNIS
-                </span>
-                <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
-                  BI
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-500 truncate font-medium">
-                Bank Indonesia Compliance
-              </p>
-            </div>
+          <Link href="/" className="flex items-center group min-w-0" title="PRISMA - Platform Regulasi, Integrasi, Search, Monitoring & Administration Bank Indonesia">
+            <img 
+              src="/prisma-logo-clean.png" 
+              alt="PRISMA Bank Indonesia" 
+              className="h-11 w-auto max-w-[175px] object-contain object-left group-hover:scale-105 transition origin-left"
+            />
           </Link>
 
           {/* Hide Sidebar Button for Desktop */}
@@ -364,18 +352,12 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
 
       {/* Mobile Top Navigation Bar */}
       <header className="md:hidden sticky top-0 z-30 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-2xs">
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-lg bg-[#003366] flex items-center justify-center text-white shadow-xs">
-            <Scale className="w-4 h-4 text-amber-300" />
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <span className="font-extrabold text-sm tracking-tight text-slate-900">
-              SI-JUKNIS
-            </span>
-            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
-              BI
-            </span>
-          </div>
+        <Link href="/" className="flex items-center" title="PRISMA Bank Indonesia">
+          <img 
+            src="/prisma-logo-clean.png" 
+            alt="PRISMA Bank Indonesia" 
+            className="h-8 w-auto max-w-[140px] object-contain object-left" 
+          />
         </Link>
 
         <div className="flex items-center space-x-2">

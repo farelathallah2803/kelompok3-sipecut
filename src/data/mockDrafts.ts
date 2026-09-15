@@ -62,7 +62,7 @@ export const INITIAL_DRAFTS: PetunjukTeknisDraft[] = [
       scope: 'Ruang lingkup Juknis ini meliputi mekanisme operasional verifikasi switching, rekonsiliasi batch transaksi harian, pengelolaan cadangan devisa penyangga, dan penanganan sengketa transaksi lintas batas.',
       orgStructure: 'Divisi Pengembangan Layanan dan Kemitraan (DPLK), Divisi Pengawasan Infrastruktur Sistem Pembayaran (DPISP), dan Kelompok Pengendalian Risiko Operasional.',
       mainDuties: 'Melaksanakan pengawasan operasional harian, rekonsiliasi laporan berkala PJP, serta koordinasi teknis dengan otoritas moneter mitra luar negeri.',
-      resources: 'Sistem BI-FAST, Aplikasi Monitoring QRIS Cross-Border (MQCB), Portal LIMS Bank Indonesia, dan Database SI-JUKNIS.'
+      resources: 'Sistem BI-FAST, Aplikasi Monitoring QRIS Cross-Border (MQCB), Portal LIMS Bank Indonesia, dan Database PRISMA.'
     },
     chapters: [
       {

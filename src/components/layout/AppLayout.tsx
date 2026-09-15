@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
@@ -48,11 +48,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
         <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500 mt-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <div>
-              <span className="font-semibold text-slate-700">SI-JUKNIS Bank Indonesia</span> &copy; 2026. Platform Harmonisasi Regulasi Internal.
+            <div className="flex items-center space-x-2">
+              <img src="/prisma-icon.png" alt="PRISMA" className="w-4 h-4 object-contain" />
+              <span className="font-semibold text-slate-700">PRISMA Bank Indonesia</span> &copy; 2026. Platform Regulasi, Integrasi, Search, Monitoring &amp; Administration.
             </div>
             <div className="text-slate-400">
-              Sistem Kepatuhan & Penyelarasan Ketentuan Internal
+              Sistem Kepatuhan &amp; Penyelarasan Ketentuan Internal
             </div>
           </div>
         </footer>

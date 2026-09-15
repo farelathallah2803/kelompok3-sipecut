@@ -83,7 +83,7 @@ export default function DashboardPage() {
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               Monitoring &amp; Harmonisasi Juknis
             </h1>
-            <span className="px-2 py-0.5 rounded-md bg-[#003366] text-white text-[10px] font-black tracking-wider">
+            <span className="px-2 py-0.5 rounded-md bg-bi-navy text-white border border-bi-gold/40 text-[10px] font-black tracking-wider shadow-2xs">
               PRISMA
             </span>
           </div>

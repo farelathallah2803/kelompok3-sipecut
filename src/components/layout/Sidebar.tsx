@@ -41,31 +41,31 @@ export const ROLE_DEFINITIONS: Record<UserRole, { label: string; badge: string; 
   pimpinan_satker: {
     label: 'Pimpinan Satker',
     badge: 'Pimpinan Satker',
-    color: 'bg-slate-100 text-slate-800 border-slate-200',
+    color: 'bg-blue-50 text-blue-900 border-blue-200',
     desc: 'Persetujuan naskah sebelum diajukan ke telaah terpadu'
   },
   dhuk_legal: {
     label: 'Legal DHk',
     badge: 'Legal DHk',
-    color: 'bg-slate-100 text-slate-800 border-slate-200',
+    color: 'bg-blue-100 text-blue-900 border-blue-300',
     desc: 'Reviu aspek hukum, hierarki peraturan, dan publikasi'
   },
   dmr_reviewer: {
     label: 'DMR',
     badge: 'DMR',
-    color: 'bg-slate-100 text-slate-800 border-slate-200',
+    color: 'bg-amber-50 text-amber-900 border-amber-200',
     desc: 'Analisis profil risiko operasional dan rencana mitigasi'
   },
   dai_auditor: {
     label: 'DAI',
     badge: 'DAI',
-    color: 'bg-slate-100 text-slate-800 border-slate-200',
+    color: 'bg-emerald-50 text-emerald-900 border-emerald-200',
     desc: 'Evaluasi sistem pengendalian intern dan kelayakan audit'
   },
   dmst_governance: {
     label: 'DMST',
     badge: 'DMST',
-    color: 'bg-cyan-50 text-cyan-800 border-cyan-200',
+    color: 'bg-gold-100 text-amber-950 border-gold-300',
     desc: 'Evaluasi keselarasan strategi & tata kelola naskah'
   },
   kemenkum_kemenkeu: {

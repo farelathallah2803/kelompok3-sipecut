@@ -342,7 +342,7 @@ export default function StageTracker({
                     : isRejected 
                     ? 'bg-rose-600 text-white' 
                     : isCurrent 
-                    ? 'bg-blue-600 text-white shadow-xs' 
+                    ? 'bg-blue-600 text-white shadow-xs ring-4 ring-blue-100' 
                     : 'bg-slate-100 text-slate-400 border border-slate-200'
                 }`}>
                   {isCompleted ? (
